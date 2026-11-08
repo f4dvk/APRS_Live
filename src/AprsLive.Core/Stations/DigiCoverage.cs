@@ -16,6 +16,13 @@ namespace AprsLive.Core.Stations;
 /// position reports count, since they carry the sender's own position (an
 /// object's position is not where its sender is). The copies of one
 /// transmission (heard on both TNCs, then the APRS-IS echo) count once.
+/// <para>
+/// Links between digis are recorded too: in <c>F1CNH-3*,F5ZBC-3*</c>,
+/// F5ZBC-3 heard F1CNH-3, and our own station heard the last digi of a radio
+/// frame. The distance is between the digis' known positions, so any frame
+/// counts, not only position reports. They are only counted in the summaries
+/// with <see cref="IncludeDigiLinks"/>.
+/// </para>
 /// </summary>
 public sealed class DigiCoverage
 {
@@ -23,17 +30,32 @@ public sealed class DigiCoverage
 
     private readonly Dictionary<string, CoverageLog> _logs = new(StringComparer.OrdinalIgnoreCase);
 
-    // Every station seen as first hop within the window, watched or not: the
-    // stations offered when picking one to watch.
+    // Every digi seen in the path of a repeated frame within the window,
+    // watched or not: the stations offered when picking one to watch.
     private readonly Dictionary<string, DateTimeOffset> _relaysSeen = new(StringComparer.OrdinalIgnoreCase);
+
+    // Where a digi is (station list, our settings), for the links between digis.
+    private readonly Func<string, (double Lat, double Lon)?>? _positionOf;
+
+    /// <param name="positionOf">
+    /// Where a station is now; without it, only the watched stations' own
+    /// beacons place a digi, for the links between digis.
+    /// </param>
+    public DigiCoverage(Func<string, (double Lat, double Lon)?>? positionOf = null)
+    {
+        _positionOf = positionOf;
+    }
 
     /// <summary>Raised when a station joins or leaves <see cref="RelaysSeen"/>.</summary>
     public event Action? RelaysSeenChanged;
 
     public IReadOnlyCollection<string> Watched => _logs.Keys;
 
-    /// <summary>Stations seen as the first hop of a repeated frame in the last 24 h.</summary>
+    /// <summary>Digis seen in the path of a repeated frame in the last 24 h.</summary>
     public IReadOnlyCollection<string> RelaysSeen => _relaysSeen.Keys;
+
+    /// <summary>Counts the digis heard relaying (links between digis) in the summaries and lists.</summary>
+    public bool IncludeDigiLinks { get; set; }
 
     public bool IsWatched(string callsign) => _logs.ContainsKey(callsign);
 
@@ -74,30 +96,68 @@ public sealed class DigiCoverage
             relayLog.Longitude = packet.Longitude;
         }
 
-        bool added = false;
-        if (FirstRepeater(packet.Frame) is { } relay)
+        var chain = RelayChain(packet.Frame);
+        bool relaysChanged = false;
+        foreach (string? digi in chain)
         {
-            if (_relaysSeen.TryAdd(relay, packet.ReceivedAt))
-                RelaysSeenChanged?.Invoke();
-            else if (packet.ReceivedAt > _relaysSeen[relay])
-                _relaysSeen[relay] = packet.ReceivedAt;
-            added = ownPosition && AddSample(relay, packet);
+            if (digi is null)
+                continue;
+            if (_relaysSeen.TryAdd(digi, packet.ReceivedAt))
+                relaysChanged = true;
+            else if (packet.ReceivedAt > _relaysSeen[digi])
+                _relaysSeen[digi] = packet.ReceivedAt;
         }
-        // Heard by our TNCs with no digi in between: our own station heard the sender direct.
-        if (OwnStation is { } own && origin == PacketOrigin.Rf && !packet.Frame.Path.Any(h => h.HasBeenRepeated))
-            added |= ownPosition && AddSample(own, packet);
+        if (relaysChanged)
+            RelaysSeenChanged?.Invoke();
+
+        bool added = false;
+        // The first digi heard the sender.
+        if (chain.Count > 0 && chain[0] is { } first && ownPosition)
+            added |= AddSample(first, packet.Source, packet.Latitude!.Value, packet.Longitude!.Value, packet, isRelay: false);
+        // Each digi heard the one before it.
+        for (int k = 1; k < chain.Count; k++)
+            if (chain[k - 1] is { } heard && chain[k] is { } heardBy)
+                added |= AddRelaySample(heardBy, heard, packet);
+
+        // Our TNCs heard the sender direct, or the last digi.
+        if (OwnStation is { } own && origin == PacketOrigin.Rf)
+        {
+            if (chain.Count == 0)
+            {
+                if (ownPosition)
+                    added |= AddSample(own, packet.Source, packet.Latitude!.Value, packet.Longitude!.Value, packet, isRelay: false);
+            }
+            else if (chain[^1] is { } lastDigi)
+                added |= AddRelaySample(own, lastDigi, packet);
+        }
         return added;
     }
 
+    // A digi heard relaying: placed where it is known to be, else not counted.
+    private bool AddRelaySample(string heardBy, string digi, AprsPacket packet)
+    {
+        if (!_logs.ContainsKey(heardBy) || PositionOf(digi) is not { } at)
+            return false;
+        return AddSample(heardBy, digi, at.Lat, at.Lon, packet, isRelay: true);
+    }
+
+    private (double Lat, double Lon)? PositionOf(string callsign)
+    {
+        if (_positionOf?.Invoke(callsign) is { } known)
+            return known;
+        return _logs.TryGetValue(callsign, out var log) && log.Latitude is { } lat && log.Longitude is { } lon
+            ? (lat, lon)
+            : null;
+    }
+
     // One sample for this watched station, unless it is a copy of one already counted.
-    private bool AddSample(string heardBy, AprsPacket packet)
+    private bool AddSample(string heardBy, string station, double lat, double lon, AprsPacket packet, bool isRelay)
     {
         if (!_logs.TryGetValue(heardBy, out var log))
             return false;
-        double lat = packet.Latitude!.Value, lon = packet.Longitude!.Value;
         if (lat == 0 && lon == 0)
             return false;   // "no fix" placeholder sent by some trackers
-        if (string.Equals(packet.Source, heardBy, StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(station, heardBy, StringComparison.OrdinalIgnoreCase))
             return false;
 
         // Mic-E carries part of the position in the destination: both make up the payload.
@@ -106,11 +166,11 @@ public sealed class DigiCoverage
         for (int i = samples.Count - 1; i >= 0 && packet.ReceivedAt - samples[i].At <= StationRegistry.DuplicateWindow; i--)
         {
             if (samples[i].PayloadKey == payloadKey
-                && string.Equals(samples[i].Station, packet.Source, StringComparison.OrdinalIgnoreCase))
+                && string.Equals(samples[i].Station, station, StringComparison.OrdinalIgnoreCase))
                 return false;
         }
 
-        samples.Add(new CoverageSample(packet.ReceivedAt, packet.Source, lat, lon) { PayloadKey = payloadKey });
+        samples.Add(new CoverageSample(packet.ReceivedAt, station, lat, lon, isRelay) { PayloadKey = payloadKey });
         return true;
     }
 
@@ -121,24 +181,44 @@ public sealed class DigiCoverage
     /// repeated hop carries the <c>*</c> (TNC2 convention), so any marked hop
     /// before the q construct means the first one was repeated too.
     /// </summary>
-    public static string? FirstRepeater(Ax25Frame frame)
+    public static string? FirstRepeater(Ax25Frame frame) =>
+        RelayChain(frame) is [{ } first, ..] ? first : null;
+
+    /// <summary>
+    /// The stations that repeated the frame, in order. Every hop up to the
+    /// last one marked repeated (before the q construct) was repeated: on
+    /// APRS-IS only that last one carries the <c>*</c>. A used alias right
+    /// after a callsign was used up by that digi (<c>F1CNH-3*,WIDE1*</c>: one
+    /// hop); one with no callsign in front, or <c>TCPIP*</c>, was repeated by a
+    /// station we can't name, given as <c>null</c>: who heard whom is unknown
+    /// on either side of it.
+    /// </summary>
+    public static IReadOnlyList<string?> RelayChain(Ax25Frame frame)
     {
         var path = frame.Path;
-        if (path.Count == 0)
-            return null;
-        var first = path[0];
-        // Every amateur callsign has a digit; TCPIP, RELAY, qAR... don't.
-        if (!first.Callsign.Any(char.IsAsciiDigit) || ReceptionPath.IsUsedAlias(first))
-            return null;
+        int last = -1;
+        for (int i = 0; i < path.Count && !ReceptionPath.IsQConstruct(path[i]); i++)
+            if (path[i].HasBeenRepeated)
+                last = i;
 
-        foreach (var hop in path)
+        var chain = new List<string?>();
+        bool afterCallsign = false;
+        for (int i = 0; i <= last; i++)
         {
-            if (ReceptionPath.IsQConstruct(hop))
-                break;
-            if (hop.HasBeenRepeated)
-                return first.ToString();
+            var hop = path[i];
+            if (ReceptionPath.IsUsedAlias(hop))
+            {
+                if (!afterCallsign)
+                    chain.Add(null);
+                afterCallsign = false;
+                continue;
+            }
+            // Every amateur callsign has a digit; TCPIP, RELAY, qAR... don't.
+            bool callsign = hop.Callsign.Any(char.IsAsciiDigit);
+            chain.Add(callsign ? hop.ToString() : null);
+            afterCallsign = callsign;
         }
-        return null;
+        return chain;
     }
 
     /// <summary>Drops what is older than 24 h. Returns true if a sample went.</summary>
@@ -167,8 +247,7 @@ public sealed class DigiCoverage
         if (LogWithPosition(callsign, relayPosition) is not { } log)
             return null;
 
-        var limit = (now ?? DateTimeOffset.Now) - Window;
-        var samples = log.Samples.Where(s => s.At >= limit).ToList();
+        var samples = Counted(log, now).ToList();
         int stations = samples.Select(s => s.Station).Distinct(StringComparer.OrdinalIgnoreCase).Count();
         DateTimeOffset? last = samples.Count > 0 ? samples.Max(s => s.At) : null;
 
@@ -196,17 +275,16 @@ public sealed class DigiCoverage
 
     /// <summary>
     /// The stations a watched station heard direct over the last 24 h (the
-    /// senders of the frames it repeated first), most recently heard first.
-    /// Empty if it isn't watched. The distance is to each sender's last position.
+    /// senders of the frames it repeated first, and the digis it heard
+    /// relaying with <see cref="IncludeDigiLinks"/>), most recently heard
+    /// first. Empty if it isn't watched. The distance is to each one's last position.
     /// </summary>
     public IReadOnlyList<DirectStation> HeardDirect(string callsign, (double Lat, double Lon)? relayPosition, DateTimeOffset? now = null)
     {
         if (LogWithPosition(callsign, relayPosition) is not { } log)
             return [];
 
-        var limit = (now ?? DateTimeOffset.Now) - Window;
-        return log.Samples
-            .Where(s => s.At >= limit)
+        return Counted(log, now)
             .GroupBy(s => s.Station, StringComparer.OrdinalIgnoreCase)
             .Select(g =>
             {
@@ -214,10 +292,17 @@ public sealed class DigiCoverage
                 double? km = log.Latitude is { } lat && log.Longitude is { } lon
                     ? GeoMath.DistanceM(lat, lon, last.Latitude, last.Longitude) / 1000.0
                     : null;
-                return new DirectStation(last.Station, g.Count(), last.At, km);
+                return new DirectStation(last.Station, g.Count(), last.At, km, g.Any(s => s.IsRelay));
             })
             .OrderByDescending(d => d.LastAt)
             .ToList();
+    }
+
+    // The samples of the last 24 h that count with the current option.
+    private IEnumerable<CoverageSample> Counted(CoverageLog log, DateTimeOffset? now)
+    {
+        var limit = (now ?? DateTimeOffset.Now) - Window;
+        return log.Samples.Where(s => s.At >= limit && (IncludeDigiLinks || !s.IsRelay));
     }
 
     // The log of a watched station, its position updated when the caller knows where it is now.
@@ -252,8 +337,13 @@ public sealed class DigiCoverage
     }
 }
 
-/// <summary>One frame a watched station repeated first: who sent it, when, and from where.</summary>
-public sealed record CoverageSample(DateTimeOffset At, string Station, double Latitude, double Longitude)
+/// <summary>One station a watched station heard direct: who, when, and from where.</summary>
+/// <param name="IsRelay">
+/// A digi heard relaying someone else's frame (link between digis), placed
+/// where it is known to be; otherwise the sender of a position report, at the
+/// position it sent.
+/// </param>
+public sealed record CoverageSample(DateTimeOffset At, string Station, double Latitude, double Longitude, bool IsRelay = false)
 {
     // Destination + info, to recognise the other copies of the same transmission. Not saved.
     [JsonIgnore]
@@ -286,9 +376,10 @@ public sealed record CoverageSummary(
     DateTimeOffset? LastAt);
 
 /// <summary>A station heard direct by a watched station, over the last 24 h.</summary>
-/// <param name="Frames">Position frames the watched station repeated first for it.</param>
+/// <param name="Frames">Frames heard direct from it (position reports, or frames it relayed for a digi).</param>
 /// <param name="DistanceKm">From the watched station to its last position; <c>null</c> while the relay position is unknown.</param>
-public sealed record DirectStation(string Station, int Frames, DateTimeOffset LastAt, double? DistanceKm);
+/// <param name="HeardRelaying">Heard as a digi relaying someone else's frame at least once.</param>
+public sealed record DirectStation(string Station, int Frames, DateTimeOffset LastAt, double? DistanceKm, bool HeardRelaying = false);
 
 /// <summary>Keeps the coverage samples of the watched stations across restarts in <c>coverage.json</c>, next to <c>settings.json</c>.</summary>
 public static class CoverageStore

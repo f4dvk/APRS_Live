@@ -295,6 +295,9 @@ public sealed class AppSettings
     /// <summary>Stations (digipeaters) whose coverage is estimated over 24 h — Couverture tab.</summary>
     public List<string> CoverageStations { get; set; } = new();
 
+    /// <summary>Couverture tab: also count the digis heard relaying (in <c>F1CNH-3*,F5ZBC-3*</c>, F5ZBC-3 heard F1CNH-3).</summary>
+    public bool CoverageDigiLinks { get; set; }
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,

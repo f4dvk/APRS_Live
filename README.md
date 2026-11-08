@@ -8,7 +8,8 @@ stations filtrables par fenêtre de temps, onglet Messages avec gestion des
 accusés de réception, onglet Couverture (portée moyenne et maximale sur 24 h
 glissantes de votre station, d'après ce que vos TNC reçoivent en direct, et des
 digipeaters choisis ; un clic sur une ligne liste les stations reçues en
-direct, avec l'heure de dernière réception), thème clair/sombre sélectionnable.
+direct, avec l'heure de dernière réception ; en option, les liaisons entre
+digis lues dans le chemin des trames), thème clair/sombre sélectionnable.
 
 Développé en .NET 8 + [Avalonia](https://avaloniaui.net/) (même socle que le
 projet [PCT_Report](https://github.com/f4dvk/PCT_Report), dont la couche

@@ -273,4 +273,117 @@ public class DigiCoverageTests
             File.Delete(path);
         }
     }
+
+    // Digis placed on the map: F1CNH-3 at 49.0 N 3.0 E, F5ZBC-3 at Digi.
+    private static (double Lat, double Lon)? Digis(string call) => call switch
+    {
+        "F1CNH-3" => (49.0, 3.0),
+        "F5ZBC-3" => Digi,
+        _ => null,
+    };
+
+    private static DigiCoverage LinksCoverage(params string[] watched)
+    {
+        var coverage = new DigiCoverage(Digis) { IncludeDigiLinks = true };
+        foreach (string call in watched)
+            coverage.Watch(call);
+        return coverage;
+    }
+
+    [Theory]
+    [InlineData(new[] { "F1CNH-3*", "F5ZBC-3*", "WIDE2*" }, new[] { "F1CNH-3", "F5ZBC-3" })]
+    // a used alias right after a callsign: that digi used it up, one hop
+    [InlineData(new[] { "F1CNH-3*", "WIDE1*", "F5ZBC-3*", "WIDE2-1" }, new[] { "F1CNH-3", "F5ZBC-3" })]
+    // the same, whichever hops carry a star (APRS-IS often marks only the last one)
+    [InlineData(new[] { "F1CNH-3*", "WIDE1*", "F5ZBC-3*" }, new[] { "F1CNH-3", "F5ZBC-3" })]
+    [InlineData(new[] { "F1CNH-3", "WIDE1*", "F5ZBC-3*" }, new[] { "F1CNH-3", "F5ZBC-3" })]
+    [InlineData(new[] { "F1CNH-3", "WIDE1", "F5ZBC-3*" }, new[] { "F1CNH-3", "F5ZBC-3" })]
+    // repeated by a digi that didn't sign: unknown, on either side of it
+    [InlineData(new[] { "F1CNH-3*", "WIDE1*", "WIDE2*" }, new[] { "F1CNH-3", null })]
+    [InlineData(new[] { "WIDE1*", "F5ZBC-3*" }, new[] { null, "F5ZBC-3" })]
+    // APRS-IS: only the last repeated hop is marked, the IGate after the q construct is not a digi
+    [InlineData(new[] { "F1CNH-3", "F5ZBC-3*", "qAR", "F4IGT" }, new[] { "F1CNH-3", "F5ZBC-3" })]
+    [InlineData(new[] { "F1CNH-3", "WIDE2-1" }, new string[0])]
+    public void The_relay_chain_lists_who_repeated_the_frame_in_order(string[] path, string?[] expected)
+    {
+        var bytes = Ax25Builder.BuildUi("F4AAA-9", "APRS", path, ">test");
+        Assert.True(Ax25Frame.TryParse(bytes, out var f));
+        Assert.Equal(expected, DigiCoverage.RelayChain(f!));
+    }
+
+    [Fact]
+    public void A_digi_hears_the_digi_before_it_in_the_path()
+    {
+        var coverage = LinksCoverage("F5ZBC-3");
+        // a status: no position in it, the digis' positions are what counts
+        Assert.True(coverage.Record(Packet("F4AAA-9", ">en route", T0, "F1CNH-3*", "F5ZBC-3*", "WIDE2*"), PacketOrigin.Rf));
+        // the APRS-IS copy is the same transmission
+        Assert.False(coverage.Record(Packet("F4AAA-9", ">en route", T0.AddSeconds(3), "F1CNH-3", "F5ZBC-3*", "qAR", "F4IGT"), PacketOrigin.Internet));
+
+        var s = coverage.Summarize("F5ZBC-3", Digi, T0.AddMinutes(1))!;
+        Assert.Equal(1, s.Frames);
+        Assert.Equal("F1CNH-3", s.FarthestStation);
+        Assert.Equal(Km(49, 3), s.MaxKm!.Value, 6);
+        var heard = Assert.Single(coverage.HeardDirect("F5ZBC-3", Digi, T0.AddMinutes(1)));
+        Assert.True(heard.HeardRelaying);
+    }
+
+    [Fact]
+    public void Links_between_digis_are_kept_but_only_counted_with_the_option()
+    {
+        var coverage = LinksCoverage("F5ZBC-3");
+        coverage.IncludeDigiLinks = false;
+        coverage.Record(Packet("F4AAA-9", ">en route", T0, "F1CNH-3*", "F5ZBC-3*", "WIDE2*"), PacketOrigin.Rf);
+
+        Assert.Equal(0, coverage.Summarize("F5ZBC-3", Digi, T0.AddMinutes(1))!.Frames);
+        Assert.Empty(coverage.HeardDirect("F5ZBC-3", Digi, T0.AddMinutes(1)));
+
+        coverage.IncludeDigiLinks = true;
+        Assert.Equal(1, coverage.Summarize("F5ZBC-3", Digi, T0.AddMinutes(1))!.Frames);
+    }
+
+    [Fact]
+    public void No_link_through_an_unsigned_hop_nor_to_a_digi_never_placed()
+    {
+        var coverage = LinksCoverage("F5ZBC-3", "F6XYZ-2");
+        Assert.False(coverage.Record(Packet("F4AAA-9", ">a", T0, "F1CNH-3*", "WIDE1*", "WIDE2*", "F5ZBC-3*"), PacketOrigin.Rf));
+        // F4NOWHERE-1 has no known position
+        Assert.False(coverage.Record(Packet("F4AAA-9", ">b", T0, "F4NOWHERE-1*", "F6XYZ-2*"), PacketOrigin.Rf));
+    }
+
+    [Fact]
+    public void Our_own_station_hears_the_last_digi_of_a_radio_frame()
+    {
+        var coverage = LinksCoverage();
+        coverage.SetOwnStation("F4DVK-10");
+        Assert.True(coverage.Record(Packet("F4AAA-9", ">a", T0, "F1CNH-3*", "WIDE2-1"), PacketOrigin.Rf));
+        // heard through APRS-IS: not by our TNCs
+        Assert.False(coverage.Record(Packet("F4AAA-9", ">b", T0.AddMinutes(1), "F5ZBC-3*", "qAR", "F4IGT"), PacketOrigin.Internet));
+
+        var heard = Assert.Single(coverage.HeardDirect("F4DVK-10", Digi, T0.AddMinutes(2)));
+        Assert.Equal("F1CNH-3", heard.Station);
+        Assert.Equal(Km(49, 3), heard.DistanceKm!.Value, 6);
+    }
+
+    [Fact]
+    public void Links_between_digis_survive_a_restart()
+    {
+        var coverage = LinksCoverage("F5ZBC-3");
+        coverage.Record(Packet("F4AAA-9", ">en route", T0, "F1CNH-3*", "F5ZBC-3*"), PacketOrigin.Rf);
+        string path = Path.Combine(Path.GetTempPath(), $"coverage-{Guid.NewGuid():N}.json");
+        try
+        {
+            CoverageStore.Save(coverage.Logs, path);
+            var restored = new DigiCoverage();
+            restored.Watch("F5ZBC-3");
+            restored.Restore(CoverageStore.Load(path), T0.AddHours(1));
+            Assert.Equal(0, restored.Summarize("F5ZBC-3", Digi, T0.AddHours(1))!.Frames);
+            restored.IncludeDigiLinks = true;
+            Assert.Equal(1, restored.Summarize("F5ZBC-3", Digi, T0.AddHours(1))!.Frames);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
 }

@@ -19,7 +19,7 @@ public sealed partial class CoverageViewModel : ViewModelBase
 {
     private readonly AppSettings _settings;
     private readonly StationRegistry _registry;
-    private readonly DigiCoverage _coverage = new();
+    private readonly DigiCoverage _coverage;
     private readonly DispatcherTimer _refreshTimer = new() { Interval = TimeSpan.FromSeconds(30) };
     private string? _ownCallsignSetting;
     private bool _dirty;
@@ -52,10 +52,16 @@ public sealed partial class CoverageViewModel : ViewModelBase
     [ObservableProperty]
     private string? _addError;
 
+    /// <summary>Also count the digis heard relaying: in <c>F1CNH-3*,F5ZBC-3*</c>, F5ZBC-3 heard F1CNH-3.</summary>
+    [ObservableProperty]
+    private bool _includeDigiLinks;
+
     public CoverageViewModel(AppSettings settings, StationRegistry registry)
     {
         _settings = settings;
         _registry = registry;
+        _coverage = new DigiCoverage(PositionOf) { IncludeDigiLinks = settings.CoverageDigiLinks };
+        _includeDigiLinks = settings.CoverageDigiLinks;
         Rows.CollectionChanged += (_, _) =>
         {
             OnPropertyChanged(nameof(HasRows));
@@ -152,6 +158,14 @@ public sealed partial class CoverageViewModel : ViewModelBase
     }
 
     private bool CanAdd() => !string.IsNullOrWhiteSpace(NewCallsign);
+
+    partial void OnIncludeDigiLinksChanged(bool value)
+    {
+        _coverage.IncludeDigiLinks = value;
+        _settings.CoverageDigiLinks = value;
+        _settings.Save();
+        Refresh();
+    }
 
     partial void OnSelectedSuggestionChanged(string? value)
     {

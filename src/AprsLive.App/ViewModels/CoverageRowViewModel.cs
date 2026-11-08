@@ -102,7 +102,8 @@ public sealed partial class CoverageRowViewModel : ViewModelBase
                 d.Station,
                 LastHeard(d.LastAt),
                 d.DistanceKm is { } km ? Km(km) : "—",
-                d.Frames.ToString(CultureInfo.InvariantCulture)))
+                d.Frames.ToString(CultureInfo.InvariantCulture),
+                d.HeardRelaying))
             .ToList();
 
     /// <summary>The line shown in the map popup of a watched station.</summary>
@@ -139,4 +140,5 @@ public sealed partial class CoverageRowViewModel : ViewModelBase
 }
 
 /// <summary>One line of the stations heard direct by a watched station.</summary>
-public sealed record DirectStationItem(string Callsign, string LastText, string DistanceText, string FramesText);
+/// <param name="IsDigi">Heard as a digi relaying someone else's frame (links between digis).</param>
+public sealed record DirectStationItem(string Callsign, string LastText, string DistanceText, string FramesText, bool IsDigi);
