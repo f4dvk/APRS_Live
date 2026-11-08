@@ -1,0 +1,54 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:AprsLive.App.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="320" d:DesignHeight="500"
+             x:Class="AprsLive.App.Views.MessagesPanelView"
+             x:DataType="vm:MessagesViewModel">
+
+    <DockPanel Margin="10">
+        <TextBlock DockPanel.Dock="Top" Text="Messages" FontSize="16" FontWeight="Bold" Margin="0,0,0,8" />
+
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+            <TextBox Text="{Binding NewPeerCallsign}" Watermark="Indicatif..." />
+            <Button Grid.Column="1" Content="+" Command="{Binding StartConversationCommand}" Margin="4,0,0,0" />
+        </Grid>
+
+        <ListBox DockPanel.Dock="Top" MaxHeight="150" ItemsSource="{Binding Conversations}"
+                  SelectedItem="{Binding SelectedConversation}" Margin="0,0,0,8">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:ConversationViewModel">
+                    <StackPanel>
+                        <TextBlock Text="{Binding Peer}" FontWeight="Bold" />
+                        <TextBlock Text="{Binding Preview}" Opacity="0.7" FontSize="11" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto" Margin="0,8,0,0" IsEnabled="{Binding CanCompose}">
+            <TextBox Name="DraftBox" Text="{Binding DraftText}" Watermark="Message..." KeyDown="OnDraftKeyDown" />
+            <Button Grid.Column="1" Content="Envoyer" Command="{Binding SendCommand}" Margin="4,0,0,0" />
+        </Grid>
+
+        <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="4">
+            <ScrollViewer>
+                <ItemsControl ItemsSource="{Binding SelectedConversation.Messages}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:MessageRowViewModel">
+                            <StackPanel Margin="6,4" Spacing="1">
+                                <TextBlock Text="{Binding DirectionLabel}" FontSize="10" Opacity="0.6" />
+                                <TextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="{Binding TimeText}" FontSize="10" Opacity="0.5" />
+                                    <TextBlock Text="{Binding StatusText}" FontSize="10" Opacity="0.5" />
+                                </StackPanel>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+    </DockPanel>
+</UserControl>

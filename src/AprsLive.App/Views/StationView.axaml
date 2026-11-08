@@ -1,0 +1,122 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:AprsLive.App.ViewModels"
+             xmlns:icons="using:AprsLive.App.Icons"
+             xmlns:display="using:AprsLive.App.Display"
+             xmlns:settings="using:AprsLive.Core.Settings"
+             mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="450"
+             x:Class="AprsLive.App.Views.StationView"
+             x:DataType="vm:StationViewModel">
+
+    <ScrollViewer Padding="16">
+        <StackPanel Spacing="12" MaxWidth="440" HorizontalAlignment="Left" Margin="0,0,0,24">
+            <TextBlock Text="Station" FontSize="18" FontWeight="Bold" />
+            <TextBlock Text="Identité utilisée pour construire les trames émises (position, messages)."
+                       TextWrapping="Wrap" Opacity="0.7" />
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="Indicatif (avec SSID)" />
+                <TextBox Text="{Binding Callsign}" Watermark="F4DVK-9" />
+            </StackPanel>
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="Coordonnées GPS" />
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                    <TextBox Text="{Binding LatitudeText}" Watermark="Latitude (ex. 48.8566)" />
+                    <TextBox Grid.Column="1" Text="{Binding LongitudeText}" Watermark="Longitude (ex. 2.3522)" />
+                </Grid>
+                <TextBlock Text="Décimal, DMS (48°51'23.8&quot;N) ou DDM acceptés — ou clic droit sur la carte."
+                           TextWrapping="Wrap" Opacity="0.7" FontSize="11" />
+            </StackPanel>
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="Icône" />
+                <ComboBox ItemsSource="{Binding AvailableSymbols}"
+                          SelectedItem="{Binding SelectedSymbol}"
+                          HorizontalAlignment="Stretch">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="icons:SymbolChoice">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Image Source="{Binding Icon}" Width="24" Height="24" />
+                                <TextBlock Text="{Binding Entry.Name}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </StackPanel>
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="Chemin (path)" />
+                <TextBox Text="{Binding Path}" Watermark="WIDE1-1,WIDE2-2" />
+            </StackPanel>
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="Destination (tocall)" />
+                <TextBox Text="{Binding Destination}" Watermark="APLIVE" />
+            </StackPanel>
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="Texte (commentaire de balise)" />
+                <TextBox Text="{Binding Text}" Watermark="Via APRS_Live" AcceptsReturn="False" />
+            </StackPanel>
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="Intervalle d'envoi (minutes, 0 = manuel uniquement)" />
+                <NumericUpDown Value="{Binding IntervalMinutes}" Minimum="0" Maximum="1440" Increment="1"
+                               Width="140" HorizontalAlignment="Left" />
+            </StackPanel>
+
+            <TextBlock Text="Statut (status report)" FontWeight="Bold" Margin="0,8,0,0" />
+            <TextBlock TextWrapping="Wrap" Opacity="0.7"
+                       Text="Une trame de statut séparée, envoyée en plus de la balise de position, au rythme choisi ci-dessous." />
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="Contenu" />
+                <ComboBox ItemsSource="{Binding AvailableStatusModes}"
+                          SelectedItem="{Binding SelectedStatusMode}"
+                          HorizontalAlignment="Stretch">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="settings:StatusMode">
+                            <TextBlock Text="{Binding Converter={x:Static display:StatusModeToLabelConverter.Instance}}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </StackPanel>
+
+            <StackPanel Spacing="4" IsVisible="{Binding IsStatusFreeText}">
+                <TextBlock Text="Texte" />
+                <TextBox Text="{Binding StatusText}" Watermark="Texte du statut..." MaxLength="62" AcceptsReturn="False" />
+                <TextBlock Text="62 caractères maximum (recommandation APRS)." TextWrapping="Wrap" Opacity="0.7" FontSize="11" />
+            </StackPanel>
+
+            <StackPanel Spacing="4" IsVisible="{Binding !IsStatusFreeText}">
+                <TextBlock TextWrapping="Wrap" Opacity="0.7" FontSize="11"
+                           Text="Calculé automatiquement à chaque envoi : la station la plus lointaine entendue en direct (sans passer par un digipeater)." />
+            </StackPanel>
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="Rythme d'envoi (toutes les N balises, 0 = jamais)" />
+                <NumericUpDown Value="{Binding StatusEveryNBeacons}" Minimum="0" Maximum="100" Increment="1"
+                               Width="140" HorizontalAlignment="Left" />
+                <TextBlock Text="1 = à chaque balise, 2 = une balise sur deux, etc. S'applique aussi aux envois manuels."
+                           TextWrapping="Wrap" Opacity="0.7" FontSize="11" />
+            </StackPanel>
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="Validité du Best DX (minutes, 0 = toute la session)" />
+                <NumericUpDown Value="{Binding BestDxWindowMinutes}" Minimum="0" Maximum="10080" Increment="10"
+                               Width="140" HorizontalAlignment="Left" />
+                <TextBlock Text="Une station plus entendue en direct depuis ce délai sort du Best DX : la suivante encore valide la remplace, sinon « aucune station ». S'applique aussi à l'affichage au-dessus de la carte."
+                           TextWrapping="Wrap" Opacity="0.7" FontSize="11" />
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="Enregistrer" Command="{Binding SaveCommand}" />
+                <Button Content="Envoyer maintenant" Command="{Binding SendNowCommand}" />
+            </StackPanel>
+            <TextBlock Text="{Binding StatusMessage}" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

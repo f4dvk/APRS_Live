@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <RootNamespace>AprsLive.App</RootNamespace>
+    <AssemblyName>APRS_Live</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets/**" />
+    <!-- APRS symbol sprite sheets (hessu/aprs-symbols), also embedded for
+         Mapsui's "embedded://" image source to crop 24x24 cells out of on the
+         map (the Avalonia icon picker uses the avares:// copy above). -->
+    <EmbeddedResource Include="Assets/aprs-symbols-*.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Desktop" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Diagnostics" Version="$(AvaloniaVersion)" Condition="'$(Configuration)' == 'Debug'" />
+    <PackageReference Include="BruTile.MbTiles" Version="6.0.0" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Mapsui.Avalonia" Version="$(MapsuiVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AprsLive.Core\AprsLive.Core.csproj" />
+    <ProjectReference Include="..\AprsLive.Audio\AprsLive.Audio.csproj" />
+  </ItemGroup>
+
+</Project>

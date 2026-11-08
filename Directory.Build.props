@@ -1,0 +1,14 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <InvariantGlobalization>true</InvariantGlobalization>
+
+    <!-- Avalonia / Mapsui stack, pinned so a fresh clone restores identically. -->
+    <AvaloniaVersion>11.3.1</AvaloniaVersion>
+    <MapsuiVersion>5.1.0</MapsuiVersion>
+  </PropertyGroup>
+</Project>

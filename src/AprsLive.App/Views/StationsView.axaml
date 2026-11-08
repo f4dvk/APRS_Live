@@ -1,0 +1,43 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:AprsLive.App.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="450"
+             x:Class="AprsLive.App.Views.StationsView"
+             x:DataType="vm:StationsViewModel">
+
+    <DockPanel Margin="16">
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,12">
+            <TextBlock Text="Stations entendues" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
+            <ComboBox Grid.Column="1" ItemsSource="{x:Static vm:StationsViewModel.ChannelChoices}"
+                      SelectedIndex="{Binding ChannelFilter}" MinWidth="150" Margin="0,0,16,0" VerticalAlignment="Center"
+                      ToolTip.Tip="Stations reçues sur cette voie (au moins une trame, directe ou via digi)" />
+            <CheckBox Grid.Column="2" Content="Directes uniquement" IsChecked="{Binding DirectOnly}" VerticalAlignment="Center"
+                      ToolTip.Tip="Avec un TNC choisi : reçues en direct sur ce TNC" />
+        </Grid>
+
+        <ListBox ItemsSource="{Binding Stations}">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:StationRowViewModel">
+                    <Grid ColumnDefinitions="Auto,120,100,90,Auto,*" Margin="0,4">
+                        <Image Source="{Binding Icon}" Width="20" Height="20" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="{Binding Callsign}" FontWeight="Bold" Margin="8,0" VerticalAlignment="Center" />
+                        <Panel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,0,8,0"
+                               Background="Transparent" ToolTip.Tip="{Binding RouteTip}">
+                            <!-- Fixed colours on purpose: a self-contained badge readable in both themes. -->
+                            <Border IsVisible="{Binding IsDirect}" Background="#FF2E7D32" CornerRadius="3" Padding="6,1">
+                                <TextBlock Text="{Binding RouteText}" Foreground="White" FontSize="11" FontWeight="SemiBold" />
+                            </Border>
+                            <TextBlock IsVisible="{Binding !IsDirect}" Text="{Binding RouteText}" Opacity="0.6" FontSize="11" />
+                        </Panel>
+                        <TextBlock Grid.Column="3" Text="{Binding ChannelText}" ToolTip.Tip="{Binding ChannelTip}"
+                                   FontSize="11" Opacity="0.8" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBlock Grid.Column="4" Text="{Binding LastHeardText}" Opacity="0.7" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBlock Grid.Column="5" Text="{Binding Comment}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </DockPanel>
+</UserControl>

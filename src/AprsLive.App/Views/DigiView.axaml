@@ -1,0 +1,57 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:AprsLive.App.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="440" d:DesignHeight="360"
+             x:Class="AprsLive.App.Views.DigiView"
+             x:DataType="vm:DigiViewModel">
+
+    <Border BorderThickness="1" BorderBrush="Gray" CornerRadius="4" Padding="12">
+        <StackPanel Spacing="8">
+            <TextBlock Text="Digipeater" FontWeight="Bold" />
+            <TextBlock TextWrapping="Wrap" Opacity="0.7"
+                       Text="Relaie les trames dont le prochain saut est un alias WIDEn-N reconnu, selon les routes ci-dessous." />
+
+            <CheckBox Content="Activer le digipeater" IsChecked="{Binding Enabled}" />
+
+            <TextBlock Text="Alias acceptés" />
+            <StackPanel Orientation="Horizontal" Spacing="16">
+                <CheckBox Content="WIDE1" IsChecked="{Binding Wide1}" />
+                <CheckBox Content="WIDE2" IsChecked="{Binding Wide2}" />
+                <CheckBox Content="WIDE3" IsChecked="{Binding Wide3}" />
+            </StackPanel>
+
+            <TextBlock Text="Routes" />
+            <Grid ColumnDefinitions="Auto,110,110" RowDefinitions="Auto,Auto,Auto" HorizontalAlignment="Left">
+                <TextBlock Grid.Row="0" Grid.Column="1" Text="Répéter sur TNC1" FontSize="11" Opacity="0.8"
+                           HorizontalAlignment="Center" />
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="Répéter sur TNC2" FontSize="11" Opacity="0.8"
+                           HorizontalAlignment="Center" />
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Reçu sur TNC1 (Liaison A)" VerticalAlignment="Center" Margin="0,0,12,0" />
+                <CheckBox Grid.Row="1" Grid.Column="1" HorizontalAlignment="Center" IsChecked="{Binding Route1To1}"
+                          IsEnabled="{Binding LinkA.TxEnabled}" ToolTip.Tip="Reçu sur TNC1 → répété sur TNC1 (1=1)" />
+                <CheckBox Grid.Row="1" Grid.Column="2" HorizontalAlignment="Center" IsChecked="{Binding Route1To2}"
+                          IsEnabled="{Binding LinkB.TxEnabled}" ToolTip.Tip="Reçu sur TNC1 → répété sur TNC2 (1=2)" />
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Reçu sur TNC2 (Liaison B)" VerticalAlignment="Center" Margin="0,0,12,0" />
+                <CheckBox Grid.Row="2" Grid.Column="1" HorizontalAlignment="Center" IsChecked="{Binding Route2To1}"
+                          IsEnabled="{Binding LinkA.TxEnabled}" ToolTip.Tip="Reçu sur TNC2 → répété sur TNC1 (2=1)" />
+                <CheckBox Grid.Row="2" Grid.Column="2" HorizontalAlignment="Center" IsChecked="{Binding Route2To2}"
+                          IsEnabled="{Binding LinkB.TxEnabled}" ToolTip.Tip="Reçu sur TNC2 → répété sur TNC2 (2=2)" />
+            </Grid>
+            <TextBlock Text="{Binding RoutesSummary}" FontFamily="monospace" FontSize="12" />
+            <TextBlock Text="{Binding RoutesWarning}" IsVisible="{Binding HasRoutesWarning}"
+                       TextWrapping="Wrap" FontSize="11" Foreground="IndianRed" />
+            <TextBlock TextWrapping="Wrap" Opacity="0.7" FontSize="11"
+                       Text="Les deux voies peuvent être écoutées même si leur « Émission » est décochée ; une colonne est grisée quand sa liaison n'émet pas (Paramètres → Radio → Liaison A/B). Une trame (même source, destination et contenu) n'est pas renvoyée sur une voie où elle est déjà passée, reçue ou émise, dans les 30 dernières secondes, même si elle revient par un autre digi." />
+
+            <TextBlock TextWrapping="Wrap" Opacity="0.7" FontSize="11"
+                       Text="Le relais des trames reçues vers Internet (IGate) se règle dans l'onglet APRS-IS, indépendamment du digipeater." />
+
+            <TextBlock Text="Journal" FontWeight="SemiBold" />
+            <ListBox ItemsSource="{Binding LogLines}" Height="120" FontFamily="monospace" FontSize="11" />
+        </StackPanel>
+    </Border>
+</UserControl>

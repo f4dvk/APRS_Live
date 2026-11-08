@@ -1,0 +1,96 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:AprsLive.App.ViewModels"
+             xmlns:display="using:AprsLive.App.Display"
+             xmlns:settings="using:AprsLive.Core.Settings"
+             mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="420"
+             x:Class="AprsLive.App.Views.LinkView"
+             x:DataType="vm:LinkViewModel">
+
+    <Border BorderThickness="1" BorderBrush="Gray" CornerRadius="4" Padding="12">
+        <StackPanel Spacing="8">
+            <TextBlock Text="{Binding Name}" FontWeight="Bold" />
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="Type" />
+                <ComboBox ItemsSource="{Binding AvailableKinds}"
+                          SelectedItem="{Binding Kind}"
+                          HorizontalAlignment="Stretch">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="settings:ChannelKind">
+                            <TextBlock Text="{Binding Converter={x:Static display:ChannelKindToLabelConverter.Instance}}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </StackPanel>
+
+            <StackPanel Spacing="4" IsVisible="{Binding IsSerialKind}">
+                <TextBlock Text="Port série" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <ComboBox ItemsSource="{Binding AvailableSerialPorts}"
+                              SelectedItem="{Binding SerialPort}"
+                              Width="160" />
+                    <Button Content="Actualiser" Command="{Binding RefreshSerialPortsCommand}" />
+                </StackPanel>
+                <TextBlock Text="Vitesse (bauds)" />
+                <NumericUpDown Value="{Binding BaudRate}" Minimum="300" Maximum="921600" Increment="100" Width="160" HorizontalAlignment="Left" />
+            </StackPanel>
+
+            <StackPanel Spacing="4" IsVisible="{Binding IsTcpKind}">
+                <TextBlock Text="Hôte" />
+                <TextBox Text="{Binding TcpHost}" Watermark="127.0.0.1" />
+                <TextBlock Text="Port TCP" />
+                <NumericUpDown Value="{Binding TcpPort}" Minimum="1" Maximum="65535" Width="160" HorizontalAlignment="Left" />
+            </StackPanel>
+
+            <StackPanel Spacing="4" IsVisible="{Binding IsAudioKind}">
+                <TextBlock Text="Entrée audio (réception)" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <ComboBox ItemsSource="{Binding AvailableAudioInputDevices}"
+                              SelectedItem="{Binding SelectedAudioInputDevice}"
+                              Width="220" />
+                    <Button Content="Actualiser" Command="{Binding RefreshAudioDevicesCommand}" />
+                </StackPanel>
+
+                <TextBlock Text="Sortie audio (émission)" />
+                <ComboBox ItemsSource="{Binding AvailableAudioOutputDevices}"
+                          SelectedItem="{Binding SelectedAudioOutputDevice}"
+                          Width="220" HorizontalAlignment="Left" />
+
+                <TextBlock Text="PTT" />
+                <ComboBox ItemsSource="{Binding AvailablePttModes}"
+                          SelectedItem="{Binding SelectedPttMode}"
+                          Width="140" HorizontalAlignment="Left">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="settings:PttMode">
+                            <TextBlock Text="{Binding Converter={x:Static display:PttModeToLabelConverter.Instance}}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <ComboBox ItemsSource="{Binding AvailableSerialPorts}"
+                              SelectedItem="{Binding PttPort}"
+                              Width="160" />
+                    <Button Content="Actualiser" Command="{Binding RefreshSerialPortsCommand}" />
+                </StackPanel>
+            </StackPanel>
+
+            <CheckBox Content="Émission" IsChecked="{Binding TxEnabled}" />
+
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="Connecter" Command="{Binding ConnectCommand}" />
+                <Button Content="Déconnecter" Command="{Binding DisconnectCommand}" />
+                <TextBlock Text="{Binding State, Converter={x:Static display:FrameLinkStateToLabelConverter.Instance}}" VerticalAlignment="Center" />
+            </StackPanel>
+            <TextBlock Text="{Binding ReconnectStatus}" IsVisible="{Binding ReconnectStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                       Foreground="#FFFF9500" TextWrapping="Wrap"
+                       ToolTip.Tip="La liaison s'est coupée (TNC débranché, éteint, réseau…) : elle se reconnecte seule. « Déconnecter » arrête les essais." />
+
+            <TextBlock Text="Journal" FontWeight="SemiBold" />
+            <ListBox ItemsSource="{Binding LogLines}" Height="140" FontFamily="monospace" FontSize="11" />
+        </StackPanel>
+    </Border>
+</UserControl>

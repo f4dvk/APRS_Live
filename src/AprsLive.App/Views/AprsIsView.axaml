@@ -1,0 +1,72 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:AprsLive.App.ViewModels"
+             xmlns:display="using:AprsLive.App.Display"
+             mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="560"
+             x:Class="AprsLive.App.Views.AprsIsView"
+             x:DataType="vm:AprsIsViewModel">
+
+    <ScrollViewer Padding="16">
+        <StackPanel Spacing="12" MaxWidth="440" HorizontalAlignment="Left">
+            <TextBlock Text="APRS-IS" FontSize="18" FontWeight="Bold" />
+            <TextBlock TextWrapping="Wrap" Opacity="0.7"
+                       Text="Flux APRS par Internet (indépendant des liaisons radio) — utilise l'indicatif défini dans l'onglet Station." />
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="Passcode" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox Text="{Binding Passcode}" Watermark="-1 (lecture seule)" Width="140" />
+                    <Button Content="Calculer depuis mon indicatif" Command="{Binding ComputePasscodeCommand}" />
+                </StackPanel>
+            </StackPanel>
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="Serveur" />
+                <ComboBox ItemsSource="{Binding AvailableServers}"
+                          SelectedItem="{Binding SelectedServer}"
+                          Width="220" HorizontalAlignment="Left" />
+                <TextBlock Text="Basculera automatiquement sur le suivant si celui-ci ne répond pas."
+                           TextWrapping="Wrap" Opacity="0.7" FontSize="11" />
+                <TextBlock Text="Port" />
+                <NumericUpDown Value="{Binding Port}" Minimum="1" Maximum="65535" Width="140" HorizontalAlignment="Left" />
+            </StackPanel>
+
+            <CheckBox Content="Se connecter au démarrage du logiciel" IsChecked="{Binding ConnectOnStartup}" />
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="Balise de position sur APRS-IS (minutes, 0 = seulement à la connexion)" />
+                <NumericUpDown Value="{Binding BeaconIntervalMinutes}" Minimum="0" Maximum="1440" Increment="5"
+                               Width="140" HorizontalAlignment="Left" />
+                <TextBlock Text="La position part aussi 5 s après chaque connexion. 5 minutes au minimum ; 20 à 30 min suffisent pour une station fixe. Nécessite un vrai passcode."
+                           TextWrapping="Wrap" Opacity="0.7" FontSize="11" />
+            </StackPanel>
+
+            <StackPanel Spacing="4">
+                <CheckBox Content="IGate : relayer les trames reçues en radio vers Internet" IsChecked="{Binding IGateEnabled}" />
+                <TextBlock TextWrapping="Wrap" Opacity="0.7" FontSize="11"
+                           Text="Toute trame reçue sur la liaison A ou B part sur APRS-IS (avec qAR et votre indicatif), sauf les chemins NOGATE, RFONLY, TCPIP ou TCPXX, les paquets tiers et requêtes générales, vos propres trames et les doublons de moins de 30 s." />
+                <TextBlock IsVisible="{Binding ShowIGatePasscodeWarning}" TextWrapping="Wrap" Foreground="IndianRed" FontSize="11"
+                           Text="Passcode -1 : rien ne sera relayé, le serveur refuse les envois d'une connexion en lecture seule." />
+            </StackPanel>
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="Zone de réception (filtre)" />
+                <TextBlock Text="{Binding FilterCentreText}" TextWrapping="Wrap" Opacity="0.7" FontSize="11" />
+                <TextBlock Text="Rayon (km)" />
+                <NumericUpDown Value="{Binding FilterRadiusKm}" Minimum="1" Maximum="9999" Width="140" HorizontalAlignment="Left" />
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="Connecter" Command="{Binding ConnectCommand}" />
+                <Button Content="Déconnecter" Command="{Binding DisconnectCommand}" />
+                <TextBlock Text="{Binding State, Converter={x:Static display:FrameLinkStateToLabelConverter.Instance}}" VerticalAlignment="Center" />
+            </StackPanel>
+            <TextBlock Text="{Binding StatusMessage}" Foreground="IndianRed" />
+
+            <TextBlock Text="Journal" FontWeight="SemiBold" />
+            <ListBox ItemsSource="{Binding LogLines}" Height="160" FontFamily="monospace" FontSize="11" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -1,0 +1,27 @@
+# .NET / Visual Studio
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+publish/
+*.user
+*.suo
+.vs/
+.vscode/
+*.DotSettings.user
+
+# Rider
+.idea/
+
+# build output / packages
+artifacts/
+*.nupkg
+*.snupkg
+
+# local data
+*.mbtiles
+settings.local.json
+
+# OS
+.DS_Store
+Thumbs.db

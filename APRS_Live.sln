@@ -1,0 +1,64 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{450FD39A-2EBC-40A1-A07B-791C242263AD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AprsLive.App", "src\AprsLive.App\AprsLive.App.csproj", "{D45DFE8F-804D-4233-B1A7-1C1FAFDC4049}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AprsLive.Core", "src\AprsLive.Core\AprsLive.Core.csproj", "{70770735-8318-417D-818C-BD4F937E11D8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AprsLive.Modem", "src\AprsLive.Modem\AprsLive.Modem.csproj", "{A8538F09-77B9-46BC-9FE0-E980A64D8919}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AprsLive.Audio", "src\AprsLive.Audio\AprsLive.Audio.csproj", "{76EA7942-693B-448A-A5D8-4222A8D59592}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{B656704A-CC86-4900-8CC4-F26700426775}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AprsLive.Core.Tests", "tests\AprsLive.Core.Tests\AprsLive.Core.Tests.csproj", "{F9848DB1-C2B4-40BE-A840-7720499B9CCE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AprsLive.Modem.Tests", "tests\AprsLive.Modem.Tests\AprsLive.Modem.Tests.csproj", "{562176AB-CE19-483D-BB2A-CB2698DE4B4C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D45DFE8F-804D-4233-B1A7-1C1FAFDC4049}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D45DFE8F-804D-4233-B1A7-1C1FAFDC4049}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D45DFE8F-804D-4233-B1A7-1C1FAFDC4049}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D45DFE8F-804D-4233-B1A7-1C1FAFDC4049}.Release|Any CPU.Build.0 = Release|Any CPU
+		{70770735-8318-417D-818C-BD4F937E11D8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{70770735-8318-417D-818C-BD4F937E11D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{70770735-8318-417D-818C-BD4F937E11D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{70770735-8318-417D-818C-BD4F937E11D8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A8538F09-77B9-46BC-9FE0-E980A64D8919}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A8538F09-77B9-46BC-9FE0-E980A64D8919}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A8538F09-77B9-46BC-9FE0-E980A64D8919}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A8538F09-77B9-46BC-9FE0-E980A64D8919}.Release|Any CPU.Build.0 = Release|Any CPU
+		{76EA7942-693B-448A-A5D8-4222A8D59592}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{76EA7942-693B-448A-A5D8-4222A8D59592}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{76EA7942-693B-448A-A5D8-4222A8D59592}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{76EA7942-693B-448A-A5D8-4222A8D59592}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F9848DB1-C2B4-40BE-A840-7720499B9CCE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F9848DB1-C2B4-40BE-A840-7720499B9CCE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F9848DB1-C2B4-40BE-A840-7720499B9CCE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F9848DB1-C2B4-40BE-A840-7720499B9CCE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{562176AB-CE19-483D-BB2A-CB2698DE4B4C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{562176AB-CE19-483D-BB2A-CB2698DE4B4C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{562176AB-CE19-483D-BB2A-CB2698DE4B4C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{562176AB-CE19-483D-BB2A-CB2698DE4B4C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{D45DFE8F-804D-4233-B1A7-1C1FAFDC4049} = {450FD39A-2EBC-40A1-A07B-791C242263AD}
+		{70770735-8318-417D-818C-BD4F937E11D8} = {450FD39A-2EBC-40A1-A07B-791C242263AD}
+		{A8538F09-77B9-46BC-9FE0-E980A64D8919} = {450FD39A-2EBC-40A1-A07B-791C242263AD}
+		{76EA7942-693B-448A-A5D8-4222A8D59592} = {450FD39A-2EBC-40A1-A07B-791C242263AD}
+		{F9848DB1-C2B4-40BE-A840-7720499B9CCE} = {B656704A-CC86-4900-8CC4-F26700426775}
+		{562176AB-CE19-483D-BB2A-CB2698DE4B4C} = {B656704A-CC86-4900-8CC4-F26700426775}
+	EndGlobalSection
+EndGlobal

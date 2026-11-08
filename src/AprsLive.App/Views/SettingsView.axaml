@@ -1,0 +1,63 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:AprsLive.App.ViewModels"
+             xmlns:local="using:AprsLive.App.Views"
+             mc:Ignorable="d" d:DesignWidth="700" d:DesignHeight="500"
+             x:Class="AprsLive.App.Views.SettingsView"
+             x:DataType="vm:MainViewModel">
+
+    <TabControl>
+        <TabItem Header="Général">
+            <StackPanel Spacing="12" Margin="16" MaxWidth="440" HorizontalAlignment="Left">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Thème" />
+                    <ComboBox SelectedItem="{Binding SelectedTheme}"
+                              ItemsSource="{x:Static local:MainWindow.ThemeChoices}"
+                              Width="160" HorizontalAlignment="Left" />
+                </StackPanel>
+
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Effacer les stations non reçues depuis (minutes, 0 = jamais)" />
+                    <NumericUpDown Value="{Binding StationExpiryMinutes}" Minimum="0" Maximum="10080" Increment="10"
+                                   Width="140" HorizontalAlignment="Left" />
+                    <TextBlock TextWrapping="Wrap" Opacity="0.7" FontSize="11"
+                               Text="Retire la station de la carte, de la liste et du Best DX (vérifié toutes les 30 s). Votre station et vos objets restent affichés. Les stations reçues sont conservées à la fermeture et rechargées au démarrage ; ce délai s'applique alors aussi à elles." />
+                </StackPanel>
+            </StackPanel>
+        </TabItem>
+
+        <TabItem Header="Radio">
+            <TabControl TabStripPlacement="Left">
+                <TabItem Header="Liaison A">
+                    <ScrollViewer Padding="16">
+                        <local:LinkView DataContext="{Binding LinkA}" MaxWidth="500" HorizontalAlignment="Left" />
+                    </ScrollViewer>
+                </TabItem>
+                <TabItem Header="Liaison B">
+                    <ScrollViewer Padding="16">
+                        <local:LinkView DataContext="{Binding LinkB}" MaxWidth="500" HorizontalAlignment="Left" />
+                    </ScrollViewer>
+                </TabItem>
+                <TabItem Header="Digipeater">
+                    <ScrollViewer Padding="16">
+                        <local:DigiView DataContext="{Binding Digi}" MaxWidth="500" HorizontalAlignment="Left" />
+                    </ScrollViewer>
+                </TabItem>
+            </TabControl>
+        </TabItem>
+
+        <TabItem Header="Station">
+            <local:StationView DataContext="{Binding Station}" />
+        </TabItem>
+
+        <TabItem Header="Objets">
+            <local:ObjectsView DataContext="{Binding Objects}" />
+        </TabItem>
+
+        <TabItem Header="APRS-IS">
+            <local:AprsIsView DataContext="{Binding AprsIs}" />
+        </TabItem>
+    </TabControl>
+</UserControl>
