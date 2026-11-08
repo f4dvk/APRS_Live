@@ -6,7 +6,9 @@ dépendance externe), possibilité de connecter 2 TNC simultanément, carte
 hors-ligne (tuiles `.mbtiles` raster) ou en ligne (OpenStreetMap), traces des
 stations filtrables par fenêtre de temps, onglet Messages avec gestion des
 accusés de réception, onglet Couverture (portée moyenne et maximale des
-digipeaters choisis sur 24 h glissantes), thème clair/sombre sélectionnable.
+digipeaters choisis sur 24 h glissantes ; un clic sur un digipeater liste les
+stations qu'il a reçues en direct, avec l'heure de dernière réception), thème
+clair/sombre sélectionnable.
 
 Développé en .NET 8 + [Avalonia](https://avaloniaui.net/) (même socle que le
 projet [PCT_Report](https://github.com/f4dvk/PCT_Report), dont la couche

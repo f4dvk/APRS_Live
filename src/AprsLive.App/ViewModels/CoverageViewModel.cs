@@ -49,7 +49,7 @@ public sealed partial class CoverageViewModel : ViewModelBase
 
         foreach (string call in _settings.CoverageStations)
             if (_coverage.Watch(call))
-                Rows.Add(new CoverageRowViewModel(call, Unwatch));
+                Rows.Add(NewRow(call));
         _coverage.Restore(CoverageStore.Load());
         _coverage.RelaysSeenChanged += UpdateSuggestions;
 
@@ -91,7 +91,7 @@ public sealed partial class CoverageViewModel : ViewModelBase
         }
         _settings.CoverageStations.Add(call);
         _settings.Save();
-        var row = new CoverageRowViewModel(call, Unwatch);
+        var row = NewRow(call);
         row.Update(_coverage.Summarize(call, PositionOf(call)));
         Rows.Add(row);
         _dirty = true;
@@ -145,6 +145,9 @@ public sealed partial class CoverageViewModel : ViewModelBase
         CoverageStore.Save(_coverage.Logs);
         _dirty = false;
     }
+
+    private CoverageRowViewModel NewRow(string callsign) =>
+        new(callsign, Unwatch, call => _coverage.HeardDirect(call, PositionOf(call)));
 
     private void Refresh()
     {

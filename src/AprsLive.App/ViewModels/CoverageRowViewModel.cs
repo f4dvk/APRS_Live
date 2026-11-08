@@ -5,15 +5,20 @@ using AprsLive.Core.Stations;
 
 namespace AprsLive.App.ViewModels;
 
-/// <summary>One watched station in the Couverture tab, updated in place as frames come in and the 24 h window slides.</summary>
+/// <summary>
+/// One watched station in the Couverture tab, updated in place as frames come
+/// in and the 24 h window slides. A click unfolds the stations it heard direct.
+/// </summary>
 public sealed partial class CoverageRowViewModel : ViewModelBase
 {
     private readonly Action<string> _remove;
+    private readonly Func<string, IReadOnlyList<DirectStation>> _heardDirect;
 
-    public CoverageRowViewModel(string callsign, Action<string> remove)
+    public CoverageRowViewModel(string callsign, Action<string> remove, Func<string, IReadOnlyList<DirectStation>> heardDirect)
     {
         Callsign = callsign;
         _remove = remove;
+        _heardDirect = heardDirect;
     }
 
     public string Callsign { get; }
@@ -37,6 +42,20 @@ public sealed partial class CoverageRowViewModel : ViewModelBase
     [ObservableProperty]
     private string _lastText = "—";
 
+    /// <summary>Unfolded: the stations heard direct are listed under the row.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Chevron))]
+    private bool _isExpanded;
+
+    public string Chevron => IsExpanded ? "▾" : "▸";
+
+    /// <summary>Filled only while unfolded.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasHeardStations))]
+    private IReadOnlyList<DirectStationItem> _heardStations = [];
+
+    public bool HasHeardStations => HeardStations.Count > 0;
+
     public void Update(CoverageSummary? s)
     {
         if (s is null)
@@ -49,10 +68,32 @@ public sealed partial class CoverageRowViewModel : ViewModelBase
         FarthestText = s.FarthestStation is { } far && s.FarthestAt is { } at
             ? $"{far} ({When(at)})"
             : s.Frames > 0 && !s.RelayPositionKnown ? "Position du relais inconnue" : "";
+        if (IsExpanded)
+            LoadHeardStations();
     }
 
     [RelayCommand]
     private void Remove() => _remove(Callsign);
+
+    [RelayCommand]
+    private void Toggle() => IsExpanded = !IsExpanded;
+
+    partial void OnIsExpandedChanged(bool value)
+    {
+        if (value)
+            LoadHeardStations();
+        else
+            HeardStations = [];
+    }
+
+    private void LoadHeardStations() =>
+        HeardStations = _heardDirect(Callsign)
+            .Select(d => new DirectStationItem(
+                d.Station,
+                LastHeard(d.LastAt),
+                d.DistanceKm is { } km ? Km(km) : "—",
+                d.Frames.ToString(CultureInfo.InvariantCulture)))
+            .ToList();
 
     /// <summary>The line shown in the map popup of a watched station.</summary>
     public static string PopupLine(CoverageSummary s)
@@ -74,4 +115,13 @@ public sealed partial class CoverageRowViewModel : ViewModelBase
         var local = at.LocalDateTime;
         return local.Date == DateTime.Today ? $"{local:HH:mm}" : $"{local:dd/MM HH:mm}";
     }
+
+    private static string LastHeard(DateTimeOffset at)
+    {
+        var local = at.LocalDateTime;
+        return local.Date == DateTime.Today ? $"{local:HH:mm:ss}" : $"{local:dd/MM HH:mm:ss}";
+    }
 }
+
+/// <summary>One line of the stations heard direct by a watched station.</summary>
+public sealed record DirectStationItem(string Callsign, string LastText, string DistanceText, string FramesText);

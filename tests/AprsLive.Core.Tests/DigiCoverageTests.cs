@@ -123,6 +123,42 @@ public class DigiCoverageTests
     }
 
     [Fact]
+    public void Lists_the_stations_heard_direct_latest_first_with_their_last_position()
+    {
+        Hear("F4AAA-9", "!4900.00N/00300.00E>a", T0, "F1ZXX-3*", "WIDE2-1");
+        Hear("F4BBB", "!4930.00N/00400.00E-b", T0.AddMinutes(5), "F1ZXX-3*", "WIDE2-1");
+        Hear("F4AAA-9", "!4920.00N/00320.00E>a", T0.AddMinutes(10), "F1ZXX-3*", "WIDE2-1");
+        // older than 24 h by the time we look: gone
+        Hear("F4CCC", "!4940.00N/00340.00E-c", T0.AddHours(-1), "F1ZXX-3*", "WIDE2-1");
+        // heard direct by another digi: not in this list
+        Hear("F4DDD", "!4940.00N/00340.00E-d", T0, "F5XYZ-2*", "WIDE2-1");
+
+        var list = _coverage.HeardDirect("F1ZXX-3", Digi, T0.AddHours(23).AddMinutes(30));
+        Assert.Equal(["F4AAA-9", "F4BBB"], list.Select(d => d.Station));
+        Assert.Equal(T0.AddMinutes(10), list[0].LastAt);
+        Assert.Equal(2, list[0].Frames);
+        Assert.Equal(Km(49 + 20 / 60.0, 3 + 20 / 60.0), list[0].DistanceKm!.Value, 3);
+        Assert.Equal(1, list[1].Frames);
+
+        // not watched: nothing recorded for it
+        Assert.Empty(_coverage.HeardDirect("F5XYZ-2", Digi, T0));
+    }
+
+    [Fact]
+    public void Heard_direct_without_the_relay_position_has_no_distance()
+    {
+        var coverage = new DigiCoverage();
+        coverage.Watch("F1ZXX-3");
+        var bytes = Ax25Builder.BuildUi("F4AAA-9", "APRS", ["F1ZXX-3*", "WIDE2-1"], "!4900.00N/00300.00E>a");
+        Assert.True(Ax25Frame.TryParse(bytes, out var f));
+        coverage.Record(AprsParser.Parse(f!, T0));
+
+        var only = Assert.Single(coverage.HeardDirect("F1ZXX-3", null, T0));
+        Assert.Null(only.DistanceKm);
+        Assert.Equal(T0, only.LastAt);
+    }
+
+    [Fact]
     public void Older_than_24_hours_drops_out()
     {
         Hear("F4AAA-9", "!4900.00N/00300.00E>a", T0, "F1ZXX-3*", "WIDE2-1");

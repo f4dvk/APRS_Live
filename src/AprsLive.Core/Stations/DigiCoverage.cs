@@ -137,13 +137,8 @@ public sealed class DigiCoverage
     /// </summary>
     public CoverageSummary? Summarize(string callsign, (double Lat, double Lon)? relayPosition, DateTimeOffset? now = null)
     {
-        if (!_logs.TryGetValue(callsign, out var log))
+        if (LogWithPosition(callsign, relayPosition) is not { } log)
             return null;
-        if (relayPosition is { } known)
-        {
-            log.Latitude = known.Lat;
-            log.Longitude = known.Lon;
-        }
 
         var limit = (now ?? DateTimeOffset.Now) - Window;
         var samples = log.Samples.Where(s => s.At >= limit).ToList();
@@ -170,6 +165,45 @@ public sealed class DigiCoverage
         }
         return new CoverageSummary(samples.Count, stations, true,
             sum / samples.Count / 1000.0, maxM / 1000.0, farthest.Station, farthest.At, last);
+    }
+
+    /// <summary>
+    /// The stations a watched station heard direct over the last 24 h (the
+    /// senders of the frames it repeated first), most recently heard first.
+    /// Empty if it isn't watched. The distance is to each sender's last position.
+    /// </summary>
+    public IReadOnlyList<DirectStation> HeardDirect(string callsign, (double Lat, double Lon)? relayPosition, DateTimeOffset? now = null)
+    {
+        if (LogWithPosition(callsign, relayPosition) is not { } log)
+            return [];
+
+        var limit = (now ?? DateTimeOffset.Now) - Window;
+        return log.Samples
+            .Where(s => s.At >= limit)
+            .GroupBy(s => s.Station, StringComparer.OrdinalIgnoreCase)
+            .Select(g =>
+            {
+                var last = g.MaxBy(s => s.At)!;
+                double? km = log.Latitude is { } lat && log.Longitude is { } lon
+                    ? GeoMath.DistanceM(lat, lon, last.Latitude, last.Longitude) / 1000.0
+                    : null;
+                return new DirectStation(last.Station, g.Count(), last.At, km);
+            })
+            .OrderByDescending(d => d.LastAt)
+            .ToList();
+    }
+
+    // The log of a watched station, its position updated when the caller knows where it is now.
+    private CoverageLog? LogWithPosition(string callsign, (double Lat, double Lon)? relayPosition)
+    {
+        if (!_logs.TryGetValue(callsign, out var log))
+            return null;
+        if (relayPosition is { } known)
+        {
+            log.Latitude = known.Lat;
+            log.Longitude = known.Lon;
+        }
+        return log;
     }
 
     /// <summary>What to save: the watched stations, their position and samples.</summary>
@@ -223,6 +257,11 @@ public sealed record CoverageSummary(
     string? FarthestStation,
     DateTimeOffset? FarthestAt,
     DateTimeOffset? LastAt);
+
+/// <summary>A station heard direct by a watched station, over the last 24 h.</summary>
+/// <param name="Frames">Position frames the watched station repeated first for it.</param>
+/// <param name="DistanceKm">From the watched station to its last position; <c>null</c> while the relay position is unknown.</param>
+public sealed record DirectStation(string Station, int Frames, DateTimeOffset LastAt, double? DistanceKm);
 
 /// <summary>Keeps the coverage samples of the watched stations across restarts in <c>coverage.json</c>, next to <c>settings.json</c>.</summary>
 public static class CoverageStore
