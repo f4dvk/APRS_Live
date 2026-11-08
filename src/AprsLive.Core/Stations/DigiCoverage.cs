@@ -170,7 +170,7 @@ public sealed class DigiCoverage
                 return false;
         }
 
-        samples.Add(new CoverageSample(packet.ReceivedAt, station, lat, lon, isRelay) { PayloadKey = payloadKey });
+        samples.Add(new CoverageSample(packet.ReceivedAt, station, lat, lon, isRelay, packet.Frame.ToTnc2()) { PayloadKey = payloadKey });
         return true;
     }
 
@@ -292,7 +292,10 @@ public sealed class DigiCoverage
                 double? km = log.Latitude is { } lat && log.Longitude is { } lon
                     ? GeoMath.DistanceM(lat, lon, last.Latitude, last.Longitude) / 1000.0
                     : null;
-                return new DirectStation(last.Station, g.Count(), last.At, km, g.Any(s => s.IsRelay));
+                // Samples saved before the frame was kept have none.
+                var withFrame = g.Where(s => s.Frame is not null).MaxBy(s => s.At);
+                return new DirectStation(last.Station, g.Count(), last.At, km, g.Any(s => s.IsRelay),
+                    withFrame?.Frame, withFrame?.At);
             })
             .OrderByDescending(d => d.LastAt)
             .ToList();
@@ -343,7 +346,9 @@ public sealed class DigiCoverage
 /// where it is known to be; otherwise the sender of a position report, at the
 /// position it sent.
 /// </param>
-public sealed record CoverageSample(DateTimeOffset At, string Station, double Latitude, double Longitude, bool IsRelay = false)
+/// <param name="Frame">The frame as received (TNC2 text: <c>SRC&gt;DST,PATH:info</c>), first copy.</param>
+public sealed record CoverageSample(DateTimeOffset At, string Station, double Latitude, double Longitude, bool IsRelay = false,
+    string? Frame = null)
 {
     // Destination + info, to recognise the other copies of the same transmission. Not saved.
     [JsonIgnore]
@@ -379,7 +384,9 @@ public sealed record CoverageSummary(
 /// <param name="Frames">Frames heard direct from it (position reports, or frames it relayed for a digi).</param>
 /// <param name="DistanceKm">From the watched station to its last position; <c>null</c> while the relay position is unknown.</param>
 /// <param name="HeardRelaying">Heard as a digi relaying someone else's frame at least once.</param>
-public sealed record DirectStation(string Station, int Frames, DateTimeOffset LastAt, double? DistanceKm, bool HeardRelaying = false);
+/// <param name="LastFrame">The last frame heard from it, as received (TNC2 text), and when.</param>
+public sealed record DirectStation(string Station, int Frames, DateTimeOffset LastAt, double? DistanceKm, bool HeardRelaying = false,
+    string? LastFrame = null, DateTimeOffset? LastFrameAt = null);
 
 /// <summary>Keeps the coverage samples of the watched stations across restarts in <c>coverage.json</c>, next to <c>settings.json</c>.</summary>
 public static class CoverageStore

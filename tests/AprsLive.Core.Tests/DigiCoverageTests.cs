@@ -386,4 +386,29 @@ public class DigiCoverageTests
             File.Delete(path);
         }
     }
+
+    [Fact]
+    public void The_last_frame_heard_is_kept_raw_across_a_restart()
+    {
+        Hear("F4AAA-9", "!4900.00N/00300.00E>a", T0, "F1ZXX-3*", "WIDE2-1");
+        Hear("F4AAA-9", "!4910.00N/00310.00E>b", T0.AddMinutes(5), "F1ZXX-3*", "WIDE2*");
+
+        var heard = Assert.Single(_coverage.HeardDirect("F1ZXX-3", Digi, T0.AddMinutes(6)));
+        Assert.Equal("F4AAA-9>APRS,F1ZXX-3*,WIDE2*:!4910.00N/00310.00E>b", heard.LastFrame);
+        Assert.Equal(T0.AddMinutes(5), heard.LastFrameAt);
+
+        string path = Path.Combine(Path.GetTempPath(), $"coverage-{Guid.NewGuid():N}.json");
+        try
+        {
+            CoverageStore.Save(_coverage.Logs, path);
+            var restored = new DigiCoverage();
+            restored.Watch("F1ZXX-3");
+            restored.Restore(CoverageStore.Load(path), T0.AddMinutes(6));
+            Assert.Equal(heard.LastFrame, Assert.Single(restored.HeardDirect("F1ZXX-3", Digi, T0.AddMinutes(6))).LastFrame);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
 }

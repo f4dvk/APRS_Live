@@ -13,6 +13,10 @@
             <Setter Property="BorderThickness" Value="0,0,0,1" />
         </Style>
         <!-- Our own station on top, set apart from the digipeaters by a thicker line. -->
+        <!-- Raw frames are long: wider tooltips than the theme's default. -->
+        <Style Selector="ToolTip">
+            <Setter Property="MaxWidth" Value="720" />
+        </Style>
         <Style Selector="Border.row.own">
             <Setter Property="BorderThickness" Value="0,0,0,2" />
             <Setter Property="Margin" Value="0,0,0,6" />
@@ -60,7 +64,16 @@
                         <ItemsControl ItemsSource="{Binding HeardStations}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:DirectStationItem">
-                                    <Grid ColumnDefinitions="130,150,100,80" Margin="0,1">
+                                    <!-- Hovering a line shows the last frame heard from that station, raw. -->
+                                    <Grid ColumnDefinitions="130,150,100,80" Margin="0,1" Background="Transparent"
+                                          ToolTip.ShowDelay="500" ToolTip.ServiceEnabled="{Binding HasFrame}">
+                                        <ToolTip.Tip>
+                                            <StackPanel Spacing="4">
+                                                <TextBlock Text="{Binding FrameHeader}" FontSize="11" Opacity="0.7" />
+                                                <TextBlock Text="{Binding Frame}" FontFamily="monospace" FontSize="12"
+                                                           TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </ToolTip.Tip>
                                         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
                                             <TextBlock Text="{Binding Callsign}" FontWeight="SemiBold" />
                                             <Border IsVisible="{Binding IsDigi}" BorderBrush="Gray" BorderThickness="1"
