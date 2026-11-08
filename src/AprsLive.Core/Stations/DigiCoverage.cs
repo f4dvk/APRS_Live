@@ -161,7 +161,8 @@ public sealed class DigiCoverage
         {
             double d = GeoMath.DistanceM(lat, lon, s.Latitude, s.Longitude);
             sum += d;
-            if (d > maxM)
+            // On a tie (a fixed station beaconing from the same spot), the latest frame wins.
+            if (d > maxM || (d == maxM && s.At > farthest.At))
             {
                 maxM = d;
                 farthest = s;

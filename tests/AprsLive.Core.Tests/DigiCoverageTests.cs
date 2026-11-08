@@ -107,6 +107,22 @@ public class DigiCoverageTests
     }
 
     [Fact]
+    public void The_farthest_time_is_the_latest_frame_at_that_distance()
+    {
+        Hear("F4AAA-9", "!4900.00N/00300.00E>a", T0, "F1ZXX-3*", "WIDE2-1");
+        Hear("F4BBB", "!4930.00N/00400.00E-b", T0.AddMinutes(5), "F1ZXX-3*", "WIDE2-1");
+        // the same beacon from the same spot, later: still the farthest, now heard at the new time
+        Hear("F4AAA-9", "!4900.00N/00300.00E>a", T0.AddMinutes(10), "F1ZXX-3*", "WIDE2-1");
+        // nearer: changes nothing
+        Hear("F4AAA-9", "!4920.00N/00320.00E>a", T0.AddMinutes(20), "F1ZXX-3*", "WIDE2-1");
+
+        var s = Summary(T0.AddMinutes(30));
+        Assert.Equal("F4AAA-9", s.FarthestStation);
+        Assert.Equal(T0.AddMinutes(10), s.FarthestAt);
+        Assert.Equal(Km(49, 3), s.MaxKm!.Value, 6);
+    }
+
+    [Fact]
     public void Older_than_24_hours_drops_out()
     {
         Hear("F4AAA-9", "!4900.00N/00300.00E>a", T0, "F1ZXX-3*", "WIDE2-1");
