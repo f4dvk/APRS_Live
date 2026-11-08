@@ -101,7 +101,8 @@ public partial class MainViewModel : ViewModelBase
         LinkB = new LinkViewModel("Liaison B", 2, _settings, _settings.ChannelB);
         AprsIs = new AprsIsViewModel(_settings);
         Station = new StationViewModel(_settings, LinkA, LinkB, AprsIs, _stationRegistry);
-        Stations = new StationsViewModel(_stationRegistry);
+        Stations = new StationsViewModel(_stationRegistry, _settings);
+        Station.Saved += Stations.OnStationSettingsSaved;
         Digi = new DigiViewModel(_settings, LinkA, LinkB);
         Messages = new MessagesViewModel(_settings, LinkA, LinkB, AprsIs, _messageCenter);
         Objects = new ObjectsViewModel(_settings, LinkA, LinkB, _stationRegistry);

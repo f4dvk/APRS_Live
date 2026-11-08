@@ -1,4 +1,6 @@
+using System.Globalization;
 using AprsLive.App.Icons;
+using AprsLive.Core;
 using AprsLive.Core.Stations;
 
 namespace AprsLive.App.ViewModels;
@@ -6,9 +8,16 @@ namespace AprsLive.App.ViewModels;
 /// <summary>One row of the Stations tab — a read-only snapshot of a <see cref="HeardStation"/> plus its icon.</summary>
 public sealed class StationRowViewModel
 {
-    public StationRowViewModel(HeardStation station)
+    /// <param name="ownPosition">Where our station is (settings), for the distance; <c>null</c> if not set.</param>
+    /// <param name="ownCallsign">Our own station shows no distance.</param>
+    public StationRowViewModel(HeardStation station, (double Lat, double Lon)? ownPosition = null, string? ownCallsign = null)
     {
         Callsign = station.Callsign;
+        DistanceText = ownPosition is { } from
+            && station.Latitude is { } lat && station.Longitude is { } lon
+            && !string.Equals(station.Callsign, ownCallsign, StringComparison.OrdinalIgnoreCase)
+                ? Km(GeoMath.DistanceM(from.Lat, from.Lon, lat, lon) / 1000.0)
+                : "";
         Icon = AprsSymbolIcons.CellImage(station.SymbolTable, station.SymbolCode);
         Comment = station.Comment ?? "";
         LastHeardText = station.LastHeard.LocalDateTime.ToString("dd/MM/yyyy HH:mm:ss");
@@ -56,6 +65,10 @@ public sealed class StationRowViewModel
             ? $"TNC{station.LastRfChannel}"
             : null;
 
+    // InvariantGlobalization is on: French decimal comma by hand.
+    private static string Km(double km) =>
+        km.ToString("0.0", CultureInfo.InvariantCulture).Replace('.', ',') + " km";
+
     private static string When(DateTimeOffset at)
     {
         var local = at.LocalDateTime;
@@ -63,6 +76,10 @@ public sealed class StationRowViewModel
     }
 
     public string Callsign { get; }
+
+    /// <summary>From our station (settings position) to its last position; empty for ours, or when our position isn't set.</summary>
+    public string DistanceText { get; }
+
     public Avalonia.Media.IImage Icon { get; }
     public string Comment { get; }
     public string LastHeardText { get; }
