@@ -5,6 +5,7 @@
              xmlns:vm="using:AprsLive.App.ViewModels"
              xmlns:display="using:AprsLive.App.Display"
              xmlns:settings="using:AprsLive.Core.Settings"
+             xmlns:kiss="using:AprsLive.Core.Kiss"
              mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="420"
              x:Class="AprsLive.App.Views.LinkView"
              x:DataType="vm:LinkViewModel">
@@ -36,6 +37,37 @@
                 </StackPanel>
                 <TextBlock Text="Vitesse (bauds)" />
                 <NumericUpDown Value="{Binding BaudRate}" Minimum="300" Maximum="921600" Increment="100" Width="160" HorizontalAlignment="Left" />
+
+                <TextBlock Text="Matériel" Margin="0,4,0,0" />
+                <ComboBox ItemsSource="{Binding AvailableTncModels}" SelectedItem="{Binding SelectedTncModel}"
+                          HorizontalAlignment="Stretch"
+                          ToolTip.Tip="Remplit les commandes qui passent le TNC en KISS à la connexion et l'en sortent à la déconnexion">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="kiss:TncModel">
+                            <TextBlock Text="{Binding Label}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                <TextBlock Text="{Binding TncModelNotes}" FontSize="11" Opacity="0.7" TextWrapping="Wrap" />
+                <Expander Header="Commandes envoyées au TNC (modifiables)" HorizontalAlignment="Stretch">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="À la connexion (passage en KISS)" />
+                        <TextBox Text="{Binding KissInitCommands}" AcceptsReturn="True" TextWrapping="NoWrap"
+                                 FontFamily="monospace" FontSize="11" MinHeight="70" MaxHeight="220"
+                                 Watermark="Aucune commande" />
+                        <TextBlock Text="{Binding InitCommandsErrors}" IsVisible="{Binding HasInitCommandsErrors}"
+                                   Foreground="IndianRed" FontSize="11" TextWrapping="Wrap" />
+                        <TextBlock Text="À la déconnexion et à la fermeture (retour au mode normal)" TextWrapping="Wrap" />
+                        <TextBox Text="{Binding KissExitCommands}" AcceptsReturn="True" TextWrapping="NoWrap"
+                                 FontFamily="monospace" FontSize="11" MinHeight="70" MaxHeight="220"
+                                 Watermark="Aucune commande" />
+                        <TextBlock Text="{Binding ExitCommandsErrors}" IsVisible="{Binding HasExitCommandsErrors}"
+                                   Foreground="IndianRed" FontSize="11" TextWrapping="Wrap" />
+                        <TextBlock FontSize="11" Opacity="0.7" TextWrapping="Wrap"
+                                   Text="Une commande par ligne, suivie d'un retour chariot puis d'une seconde d'attente. {pause 2} : attendre 2 s · {hex C0 FF C0} : envoyer ces octets · # : commentaire. Pris en compte à la prochaine connexion ; les réponses du TNC s'affichent dans le journal." />
+                        <Button Content="Rétablir les commandes du modèle" Command="{Binding RestoreTncModelCommandsCommand}" />
+                    </StackPanel>
+                </Expander>
             </StackPanel>
 
             <StackPanel Spacing="4" IsVisible="{Binding IsTcpKind}">

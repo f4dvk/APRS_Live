@@ -123,6 +123,15 @@ public sealed class ChannelSettings
 
     public int BaudRate { get; set; } = 9600;
 
+    /// <summary>KissSerial: the kind of TNC (<see cref="Kiss.TncModels"/>), which filled in the commands below.</summary>
+    public string TncModel { get; set; } = Kiss.TncModels.NoneId;
+
+    /// <summary>KissSerial: commands that put the TNC into KISS mode once the port is open (see <see cref="Kiss.TncScript"/>).</summary>
+    public string KissInitCommands { get; set; } = "";
+
+    /// <summary>KissSerial: commands that take it back out of KISS on disconnect and when the application closes.</summary>
+    public string KissExitCommands { get; set; } = "";
+
     /// <summary>KissTcp: host of the KISS TCP server (e.g. Direwolf's <c>KISSPORT</c>).</summary>
     public string TcpHost { get; set; } = "127.0.0.1";
 

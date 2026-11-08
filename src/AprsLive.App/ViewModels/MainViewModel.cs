@@ -242,6 +242,16 @@ public partial class MainViewModel : ViewModelBase
     public (double Lat, double Lon)? OwnPosition =>
         _settings.Station.Latitude is { } lat && _settings.Station.Longitude is { } lon ? (lat, lon) : null;
 
+    /// <summary>A serial TNC has commands to send before the application closes (back out of KISS mode).</summary>
+    public bool HasExitCommandsToSend => LinkA.NeedsExitCommands || LinkB.NeedsExitCommands;
+
+    /// <summary>Closes both links as the application closes, sending the serial TNCs' exit commands.</summary>
+    public async Task CloseLinksForExitAsync()
+    {
+        StatusMessage = "Retour des TNC au mode normal…";
+        await Task.WhenAll(LinkA.CloseForExitAsync(), LinkB.CloseForExitAsync());
+    }
+
     /// <summary>Called as the window closes: remembers which links were connected, for the next start.</summary>
     public void SaveSessionState()
     {

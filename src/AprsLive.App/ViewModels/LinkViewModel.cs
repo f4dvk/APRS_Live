@@ -131,6 +131,33 @@ public partial class LinkViewModel : ViewModelBase
     [ObservableProperty]
     private int _baudRate;
 
+    public IReadOnlyList<TncModel> AvailableTncModels => TncModels.All;
+
+    /// <summary>The kind of serial TNC: picking one fills in its commands, which stay editable.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TncModelNotes))]
+    private TncModel _selectedTncModel;
+
+    public string TncModelNotes => SelectedTncModel.Notes;
+
+    /// <summary>Sent once the serial port is open, to put the TNC into KISS mode.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(InitCommandsErrors), nameof(HasInitCommandsErrors))]
+    private string _kissInitCommands;
+
+    /// <summary>Sent on disconnect and when the application closes, to take the TNC back out of KISS.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ExitCommandsErrors), nameof(HasExitCommandsErrors))]
+    private string _kissExitCommands;
+
+    public string InitCommandsErrors => string.Join("\n", TncScript.Parse(KissInitCommands).Errors);
+    public bool HasInitCommandsErrors => InitCommandsErrors.Length > 0;
+    public string ExitCommandsErrors => string.Join("\n", TncScript.Parse(KissExitCommands).Errors);
+    public bool HasExitCommandsErrors => ExitCommandsErrors.Length > 0;
+
+    /// <summary>Connected (or connecting) to a serial TNC that has commands to send before the application closes.</summary>
+    public bool NeedsExitCommands => _serialLink is not null && !TncScript.Parse(KissExitCommands).IsEmpty;
+
     [ObservableProperty]
     private string _tcpHost;
 
@@ -179,6 +206,9 @@ public partial class LinkViewModel : ViewModelBase
         _kind = settings.Kind;
         _serialPort = settings.SerialPort;
         _baudRate = settings.BaudRate;
+        _selectedTncModel = TncModels.Find(settings.TncModel);
+        _kissInitCommands = settings.KissInitCommands ?? "";
+        _kissExitCommands = settings.KissExitCommands ?? "";
         _tcpHost = settings.TcpHost;
         _tcpPort = settings.TcpPort;
         _txEnabled = settings.TxEnabled;
@@ -241,6 +271,27 @@ public partial class LinkViewModel : ViewModelBase
     [RelayCommand]
     private void RefreshSerialPorts() => AvailableSerialPorts = SerialKissLink.AvailablePorts();
 
+    // Picked by the user: its commands replace the current ones, except "Autre" which keeps them.
+    partial void OnSelectedTncModelChanged(TncModel value)
+    {
+        if (value.Id != TncModels.CustomId)
+            LoadTncModelCommands(value);
+    }
+
+    /// <summary>Puts back the selected model's commands, after edits.</summary>
+    [RelayCommand]
+    private void RestoreTncModelCommands() => LoadTncModelCommands(SelectedTncModel);
+
+    private void LoadTncModelCommands(TncModel model)
+    {
+        if (model.Id == TncModels.CustomId)
+            return;
+        KissInitCommands = model.InitCommands;
+        KissExitCommands = model.ExitCommands;
+        if (model.BaudRate is { } baud)
+            BaudRate = baud;
+    }
+
     [RelayCommand]
     private void RefreshAudioDevices() => RefreshAudioDevices(_settings);
 
@@ -293,7 +344,8 @@ public partial class LinkViewModel : ViewModelBase
             {
                 ChannelKind.KissTcp => new TcpKissLink(TcpHost, TcpPort),
                 ChannelKind.AudioAfsk => BuildAudioModemLink(),
-                _ => _serialLink = new SerialKissLink(SerialPortToOpen, BaudRate),
+                _ => _serialLink = new SerialKissLink(SerialPortToOpen, BaudRate,
+                    TncScript.Parse(KissInitCommands), TncScript.Parse(KissExitCommands)),
             };
             link = _link = created;
 
@@ -478,16 +530,17 @@ public partial class LinkViewModel : ViewModelBase
         if (link is null)
             return;
         _link = null;
-        link.Log -= AppendLog;
         link.FrameReceived -= OnFrameReceived;
         try
         {
+            // Sends the exit commands first, if any: still logged.
             await link.DisposeAsync();
         }
         catch
         {
             // already gone
         }
+        link.Log -= AppendLog;
 
         _pttKeyer?.Dispose();
         _pttKeyer = null;
@@ -511,6 +564,18 @@ public partial class LinkViewModel : ViewModelBase
     }
 
     private bool CanDisconnect() => _link is not null || _reconnectCts is not null;
+
+    /// <summary>
+    /// The application is closing: closes the link, sending a serial TNC's
+    /// exit commands, without changing whether it reconnects on next start
+    /// (<see cref="RememberStateForNextStart"/> has run already).
+    /// </summary>
+    public async Task CloseForExitAsync()
+    {
+        _wantConnected = false;
+        CancelPendingReconnect();
+        await DropLinkAsync();
+    }
 
     private void OnLinkStateChanged(IFrameLink link, FrameLinkState s)
     {
@@ -586,6 +651,9 @@ public partial class LinkViewModel : ViewModelBase
         if (!string.IsNullOrWhiteSpace(SerialPort))
             _settings.SerialPort = SerialPort;
         _settings.BaudRate = BaudRate;
+        _settings.TncModel = SelectedTncModel.Id;
+        _settings.KissInitCommands = KissInitCommands;
+        _settings.KissExitCommands = KissExitCommands;
         _settings.TcpHost = TcpHost;
         _settings.TcpPort = TcpPort;
         _settings.TxEnabled = TxEnabled;

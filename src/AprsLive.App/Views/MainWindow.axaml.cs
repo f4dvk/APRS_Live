@@ -46,7 +46,32 @@ public partial class MainWindow : Window
         // window to the screen's working area directly, deferred a tick past
         // Opened, is a more reliable way to get the same full-screen result.
         Opened += (_, _) => Dispatcher.UIThread.Post(MaximizeToScreen, DispatcherPriority.Background);
-        Closing += (_, _) => (DataContext as MainViewModel)?.SaveSessionState();
+        Closing += OnClosing;
+    }
+
+    private bool _linksClosedForExit;
+
+    // A serial TNC left in KISS mode would keep the radio's own APRS/packet
+    // off: the close waits for its exit commands (a few seconds), then goes on.
+    private async void OnClosing(object? sender, WindowClosingEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm || _linksClosedForExit)
+            return;
+        vm.SaveSessionState();
+        if (!vm.HasExitCommandsToSend)
+            return;
+
+        e.Cancel = true;
+        _linksClosedForExit = true;
+        IsEnabled = false;
+        try
+        {
+            await vm.CloseLinksForExitAsync();
+        }
+        finally
+        {
+            Close();
+        }
     }
 
     private void MaximizeToScreen()

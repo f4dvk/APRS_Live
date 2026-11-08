@@ -10,6 +10,7 @@ namespace AprsLive.Core.Kiss;
 public abstract class KissLinkBase : IFrameLink
 {
     private readonly KissDeframer _deframer = new();
+    private CancellationTokenSource? _connectCts;
     private CancellationTokenSource? _pumpCts;
     private Task? _pumpTask;
 
@@ -43,6 +44,15 @@ public abstract class KissLinkBase : IFrameLink
     /// <summary>Frees what <see cref="OpenAsync"/> opened besides the stream (the serial port, the TCP client).</summary>
     protected virtual void ReleaseTransport() { }
 
+    /// <summary>
+    /// Runs while still connected, just before a disconnect closes the
+    /// transport: a serial TNC is put back out of KISS mode here.
+    /// </summary>
+    protected virtual Task BeforeCloseAsync(CancellationToken ct) => Task.CompletedTask;
+
+    /// <summary>The most <see cref="BeforeCloseAsync"/> may take; the link closes anyway after that.</summary>
+    private static readonly TimeSpan BeforeCloseTimeout = TimeSpan.FromSeconds(20);
+
     private void CloseTransport()
     {
         var transport = Transport;
@@ -58,9 +68,11 @@ public abstract class KissLinkBase : IFrameLink
 
         SetState(FrameLinkState.Connecting);
         RaiseLog($"Connexion à {Describe()}…");
+        // Cancelled by a disconnect during a long open (a TNC's start-up commands).
+        var connectCts = _connectCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         try
         {
-            Transport = await OpenAsync(ct).ConfigureAwait(false);
+            Transport = await OpenAsync(connectCts.Token).ConfigureAwait(false);
             // Connected before the pump starts: a peer closing at once must end in Disconnected, not the reverse.
             SetState(FrameLinkState.Connected);
             RaiseLog($"Connecté à {Describe()}.");
@@ -71,8 +83,16 @@ public abstract class KissLinkBase : IFrameLink
         {
             CloseTransport();
             SetState(FrameLinkState.Faulted);
-            RaiseLog($"Échec de connexion : {ex.Message}");
+            RaiseLog(connectCts.IsCancellationRequested && !ct.IsCancellationRequested
+                ? "Connexion interrompue."
+                : $"Échec de connexion : {ex.Message}");
             throw;
+        }
+        finally
+        {
+            if (_connectCts == connectCts)
+                _connectCts = null;
+            connectCts.Dispose();
         }
     }
 
@@ -126,6 +146,13 @@ public abstract class KissLinkBase : IFrameLink
 
     public async ValueTask DisposeAsync()
     {
+        try { _connectCts?.Cancel(); } catch { /* ignore */ }
+        if (State == FrameLinkState.Connected && Transport is not null)
+        {
+            using var timeout = new CancellationTokenSource(BeforeCloseTimeout);
+            try { await BeforeCloseAsync(timeout.Token).ConfigureAwait(false); }
+            catch (Exception ex) { RaiseLog($"Commandes de sortie interrompues : {ex.Message}"); }
+        }
         try { _pumpCts?.Cancel(); } catch { /* ignore */ }
         // Close first: on Windows a pending serial read ignores the
         // cancellation and would only end with the TNC's next byte, which

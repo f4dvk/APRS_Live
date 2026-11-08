@@ -2,7 +2,10 @@
 
 Logiciel APRS de bureau, multiplateforme (Linux, Windows x64, Windows x86) :
 connexion TNC KISS (série ou TCP) ou TNC audio (modem AFSK1200 maison, sans
-dépendance externe), possibilité de connecter 2 TNC simultanément, carte
+dépendance externe), passage automatique en KISS des TNC série qui démarrent
+en mode commande (TNC2 et compatibles, Kantronics, Kenwood TM-D700 et
+TM-D710/TH-D72), par des commandes modifiables envoyées à la connexion et à la
+déconnexion, possibilité de connecter 2 TNC simultanément, carte
 hors-ligne (tuiles `.mbtiles` raster) ou en ligne (OpenStreetMap), traces des
 stations filtrables par fenêtre de temps, onglet Messages avec gestion des
 accusés de réception, onglet Couverture (portée moyenne et maximale sur 24 h
