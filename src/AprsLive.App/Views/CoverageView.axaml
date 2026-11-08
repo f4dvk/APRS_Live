@@ -7,11 +7,81 @@
              x:Class="AprsLive.App.Views.CoverageView"
              x:DataType="vm:CoverageViewModel">
 
+    <UserControl.Styles>
+        <Style Selector="Border.row">
+            <Setter Property="BorderBrush" Value="Gray" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+        </Style>
+        <!-- Our own station on top, set apart from the digipeaters by a thicker line. -->
+        <Style Selector="Border.row.own">
+            <Setter Property="BorderThickness" Value="0,0,0,2" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+        </Style>
+    </UserControl.Styles>
+
+    <UserControl.Resources>
+        <DataTemplate x:Key="CoverageRowTemplate" x:DataType="vm:CoverageRowViewModel">
+            <Border Classes="row" Classes.own="{Binding IsOwnStation}" Padding="12,6">
+                <StackPanel>
+                    <!-- A click anywhere on the row (but its button) unfolds the stations heard direct. -->
+                    <!-- MinHeight: the button's, so our own row (no button) is as tall as the others. -->
+                    <Grid ColumnDefinitions="130,80,80,100,100,*,110,110" Background="Transparent" Cursor="Hand"
+                          MinHeight="32" PointerPressed="OnRowPressed"
+                          ToolTip.Tip="Cliquer pour voir les stations reçues en direct">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Chevron}" Opacity="0.7" Width="10" />
+                            <TextBlock Text="{Binding Callsign}" FontWeight="Bold" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="{Binding FramesText}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Text="{Binding StationsText}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="3" Text="{Binding AverageText}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="4" Text="{Binding MaxText}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="5" Text="{Binding FarthestText}" TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBlock Grid.Column="6" Text="{Binding LastText}" Opacity="0.8" VerticalAlignment="Center" />
+                        <Button Grid.Column="7" Content="Ne plus suivre" Command="{Binding RemoveCommand}"
+                                IsVisible="{Binding !IsOwnStation}" HorizontalAlignment="Right" Cursor="Arrow" />
+                        <TextBlock Grid.Column="7" Text="Votre station" IsVisible="{Binding IsOwnStation}"
+                                   FontStyle="Italic" Opacity="0.7" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                   ToolTip.Tip="Station des Paramètres : trames de position reçues en direct par vos TNC" />
+                    </Grid>
+
+                    <StackPanel IsVisible="{Binding IsExpanded}" Margin="14,8,0,4" Spacing="2">
+                        <TextBlock Text="Stations reçues en direct — 24 h, la plus récente en haut"
+                                   FontSize="11" FontWeight="SemiBold" Opacity="0.7" Margin="0,0,0,2" />
+                        <Grid ColumnDefinitions="130,150,100,80" IsVisible="{Binding HasHeardStations}">
+                            <TextBlock Grid.Column="0" Text="Station" FontSize="11" Opacity="0.7" />
+                            <TextBlock Grid.Column="1" Text="Dernière réception" FontSize="11" Opacity="0.7" />
+                            <TextBlock Grid.Column="2" Text="Distance" FontSize="11" Opacity="0.7"
+                                       ToolTip.Tip="Jusqu'à la dernière position reçue de la station" />
+                            <TextBlock Grid.Column="3" Text="Trames" FontSize="11" Opacity="0.7"
+                                       ToolTip.Tip="Trames de position reçues en direct de cette station" />
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding HeardStations}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:DirectStationItem">
+                                    <Grid ColumnDefinitions="130,150,100,80" Margin="0,1">
+                                        <TextBlock Grid.Column="0" Text="{Binding Callsign}" FontWeight="SemiBold" />
+                                        <TextBlock Grid.Column="1" Text="{Binding LastText}" />
+                                        <TextBlock Grid.Column="2" Text="{Binding DistanceText}" />
+                                        <TextBlock Grid.Column="3" Text="{Binding FramesText}" Opacity="0.8" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock IsVisible="{Binding !HasHeardStations}" Opacity="0.7" TextWrapping="Wrap"
+                                   Text="{Binding EmptyHeardText}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
     <DockPanel Margin="16">
         <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,12">
-            <TextBlock Text="Couverture des digipeaters — 24 h glissantes" FontSize="18" FontWeight="Bold" />
+            <TextBlock Text="Couverture — 24 h glissantes" FontSize="18" FontWeight="Bold" />
             <TextBlock TextWrapping="Wrap" Opacity="0.7" MaxWidth="780" HorizontalAlignment="Left"
-                       Text="Chaque trame de position dont la station suivie est le premier digi du chemin (elle a donc reçu l'émetteur en direct) donne la distance entre ce relais et l'émetteur. Moyenne et maximum portent sur les 24 dernières heures, trames reçues en radio et par APRS-IS ; les copies d'une même trame ne comptent qu'une fois. La position du relais est celle de ses balises." />
+                       Text="En haut, votre station (Paramètres → Station) : chaque trame de position reçue en direct par vos TNC, sans digi, donne la distance entre vous et l'émetteur. En dessous, les digipeaters suivis : chaque trame de position dont ils sont le premier digi du chemin (ils ont donc reçu l'émetteur en direct) donne la distance entre le relais, placé d'après ses balises, et l'émetteur. Moyenne et maximum portent sur les 24 dernières heures ; les copies d'une même trame ne comptent qu'une fois. Cliquez sur une ligne pour voir les stations reçues en direct." />
             <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
                 <ComboBox ItemsSource="{Binding Suggestions}" SelectedItem="{Binding SelectedSuggestion}"
                           PlaceholderText="Digis repérés (24 h)" MinWidth="190" VerticalAlignment="Center"
@@ -22,16 +92,16 @@
                         <KeyBinding Gesture="Enter" Command="{Binding AddCommand}" />
                     </TextBox.KeyBindings>
                 </TextBox>
-                <Button Content="Suivre" Command="{Binding AddCommand}" VerticalAlignment="Center" />
+                <Button Content="Suivre un digi" Command="{Binding AddCommand}" VerticalAlignment="Center" />
                 <TextBlock Text="{Binding AddError}" Foreground="IndianRed" VerticalAlignment="Center" />
             </StackPanel>
         </StackPanel>
 
         <Grid DockPanel.Dock="Top" ColumnDefinitions="130,80,80,100,100,*,110,110" Margin="12,0,12,4"
-              IsVisible="{Binding HasRows}">
+              IsVisible="{Binding HasAnyRow}">
             <TextBlock Grid.Column="0" Text="Station" FontSize="11" Opacity="0.7" />
             <TextBlock Grid.Column="1" Text="Trames" FontSize="11" Opacity="0.7"
-                       ToolTip.Tip="Trames de position relayées en premier par cette station" />
+                       ToolTip.Tip="Trames de position reçues en direct par la station (pour un digi : relayées en premier)" />
             <TextBlock Grid.Column="2" Text="Stations" FontSize="11" Opacity="0.7"
                        ToolTip.Tip="Émetteurs différents parmi ces trames" />
             <TextBlock Grid.Column="3" Text="Moyenne" FontSize="11" Opacity="0.7" />
@@ -40,65 +110,17 @@
             <TextBlock Grid.Column="6" Text="Dernière trame" FontSize="11" Opacity="0.7" />
         </Grid>
 
-        <TextBlock DockPanel.Dock="Top" IsVisible="{Binding !HasRows}" Opacity="0.7" TextWrapping="Wrap"
-                   Text="Aucune station suivie. Choisissez un digi repéré ou tapez un indicatif, ou utilisez « Suivre la couverture » dans la bulle d'une station sur la carte." />
-
         <ScrollViewer>
-            <ItemsControl ItemsSource="{Binding Rows}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:CoverageRowViewModel">
-                        <Border BorderBrush="Gray" BorderThickness="0,0,0,1" Padding="12,6">
-                          <StackPanel>
-                            <!-- A click anywhere on the row (but its button) unfolds the stations heard direct. -->
-                            <Grid ColumnDefinitions="130,80,80,100,100,*,110,110" Background="Transparent" Cursor="Hand"
-                                  PointerPressed="OnRowPressed"
-                                  ToolTip.Tip="Cliquer pour voir les stations reçues en direct">
-                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Chevron}" Opacity="0.7" Width="10" />
-                                    <TextBlock Text="{Binding Callsign}" FontWeight="Bold" />
-                                </StackPanel>
-                                <TextBlock Grid.Column="1" Text="{Binding FramesText}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="2" Text="{Binding StationsText}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="3" Text="{Binding AverageText}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="4" Text="{Binding MaxText}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="5" Text="{Binding FarthestText}" TextTrimming="CharacterEllipsis"
-                                           VerticalAlignment="Center" Margin="0,0,8,0" />
-                                <TextBlock Grid.Column="6" Text="{Binding LastText}" Opacity="0.8" VerticalAlignment="Center" />
-                                <Button Grid.Column="7" Content="Ne plus suivre" Command="{Binding RemoveCommand}"
-                                        HorizontalAlignment="Right" Cursor="Arrow" />
-                            </Grid>
+            <StackPanel>
+                <ContentControl Content="{Binding OwnRow}" ContentTemplate="{StaticResource CoverageRowTemplate}"
+                                IsVisible="{Binding HasOwnRow}" />
+                <TextBlock IsVisible="{Binding !HasOwnRow}" Opacity="0.7" TextWrapping="Wrap" Margin="0,0,0,8"
+                           Text="Renseignez votre indicatif dans Paramètres → Station pour voir ici ce que votre station reçoit en direct." />
 
-                            <StackPanel IsVisible="{Binding IsExpanded}" Margin="14,8,0,4" Spacing="2">
-                                <TextBlock Text="Stations reçues en direct — 24 h, la plus récente en haut"
-                                           FontSize="11" FontWeight="SemiBold" Opacity="0.7" Margin="0,0,0,2" />
-                                <Grid ColumnDefinitions="130,150,100,80" IsVisible="{Binding HasHeardStations}">
-                                    <TextBlock Grid.Column="0" Text="Station" FontSize="11" Opacity="0.7" />
-                                    <TextBlock Grid.Column="1" Text="Dernière réception" FontSize="11" Opacity="0.7" />
-                                    <TextBlock Grid.Column="2" Text="Distance" FontSize="11" Opacity="0.7"
-                                               ToolTip.Tip="Du relais à la dernière position reçue de la station" />
-                                    <TextBlock Grid.Column="3" Text="Trames" FontSize="11" Opacity="0.7"
-                                               ToolTip.Tip="Trames de position relayées en premier pour cette station" />
-                                </Grid>
-                                <ItemsControl ItemsSource="{Binding HeardStations}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="vm:DirectStationItem">
-                                            <Grid ColumnDefinitions="130,150,100,80" Margin="0,1">
-                                                <TextBlock Grid.Column="0" Text="{Binding Callsign}" FontWeight="SemiBold" />
-                                                <TextBlock Grid.Column="1" Text="{Binding LastText}" />
-                                                <TextBlock Grid.Column="2" Text="{Binding DistanceText}" />
-                                                <TextBlock Grid.Column="3" Text="{Binding FramesText}" Opacity="0.8" />
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                                <TextBlock IsVisible="{Binding !HasHeardStations}" Opacity="0.7" TextWrapping="Wrap"
-                                           Text="Aucune trame de position relayée en premier par cette station sur les 24 dernières heures." />
-                            </StackPanel>
-                          </StackPanel>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                <ItemsControl ItemsSource="{Binding Rows}" ItemTemplate="{StaticResource CoverageRowTemplate}" />
+                <TextBlock IsVisible="{Binding !HasRows}" Opacity="0.7" TextWrapping="Wrap" Margin="0,4,0,0"
+                           Text="Aucun digipeater suivi. Choisissez un digi repéré ou tapez un indicatif, ou utilisez « Suivre la couverture » dans la bulle d'une station sur la carte." />
+            </StackPanel>
         </ScrollViewer>
     </DockPanel>
 </UserControl>

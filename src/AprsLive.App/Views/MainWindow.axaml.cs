@@ -249,7 +249,8 @@ public partial class MainWindow : Window
             _stationPopup.IsOpen = false;
         };
         buttons.Children.Add(messageButton);
-        if (CoverageViewModel.CanWatch(station.Callsign))
+        // Our own station is always in the Couverture tab: nothing to start or stop.
+        if (CoverageViewModel.CanWatch(station.Callsign) && !vm.Coverage.IsOwnStation(station.Callsign))
         {
             bool watched = vm.Coverage.IsWatched(station.Callsign);
             var coverageButton = new Button { Content = watched ? "Arrêter le suivi" : "Suivre la couverture" };

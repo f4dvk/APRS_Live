@@ -6,22 +6,32 @@ using AprsLive.Core.Stations;
 namespace AprsLive.App.ViewModels;
 
 /// <summary>
-/// One watched station in the Couverture tab, updated in place as frames come
-/// in and the 24 h window slides. A click unfolds the stations it heard direct.
+/// One watched station in the Couverture tab (our own station on top, or a
+/// digipeater), updated in place as frames come in and the 24 h window
+/// slides. A click unfolds the stations it heard direct.
 /// </summary>
 public sealed partial class CoverageRowViewModel : ViewModelBase
 {
     private readonly Action<string> _remove;
     private readonly Func<string, IReadOnlyList<DirectStation>> _heardDirect;
 
-    public CoverageRowViewModel(string callsign, Action<string> remove, Func<string, IReadOnlyList<DirectStation>> heardDirect)
+    public CoverageRowViewModel(string callsign, Action<string> remove, Func<string, IReadOnlyList<DirectStation>> heardDirect,
+        bool isOwnStation = false)
     {
         Callsign = callsign;
         _remove = remove;
         _heardDirect = heardDirect;
+        IsOwnStation = isOwnStation;
     }
 
     public string Callsign { get; }
+
+    /// <summary>Our own station (Paramètres → Station): what our TNCs hear direct. It can't be unwatched.</summary>
+    public bool IsOwnStation { get; }
+
+    public string EmptyHeardText => IsOwnStation
+        ? "Aucune trame de position reçue en direct par vos TNC sur les 24 dernières heures."
+        : "Aucune trame de position relayée en premier par cette station sur les 24 dernières heures.";
 
     [ObservableProperty]
     private string _framesText = "0";
@@ -67,7 +77,7 @@ public sealed partial class CoverageRowViewModel : ViewModelBase
         MaxText = s.MaxKm is { } max ? Km(max) : "—";
         FarthestText = s.FarthestStation is { } far && s.FarthestAt is { } at
             ? $"{far} ({When(at)})"
-            : s.Frames > 0 && !s.RelayPositionKnown ? "Position du relais inconnue" : "";
+            : s.Frames > 0 && !s.RelayPositionKnown ? UnknownPosition(IsOwnStation) : "";
         if (IsExpanded)
             LoadHeardStations();
     }
@@ -96,15 +106,20 @@ public sealed partial class CoverageRowViewModel : ViewModelBase
             .ToList();
 
     /// <summary>The line shown in the map popup of a watched station.</summary>
-    public static string PopupLine(CoverageSummary s)
+    public static string PopupLine(CoverageSummary s, bool isOwnStation = false)
     {
         if (s.Frames == 0)
-            return "Couverture 24 h : aucune trame relayée en premier pour l'instant";
+            return isOwnStation
+                ? "Couverture 24 h : aucune trame reçue en direct pour l'instant"
+                : "Couverture 24 h : aucune trame relayée en premier pour l'instant";
         string frames = s.Frames == 1 ? "1 trame" : $"{s.Frames} trames";
         if (s.AverageKm is not { } avg || s.MaxKm is not { } max)
-            return $"Couverture 24 h : {frames} · position du relais inconnue";
+            return $"Couverture 24 h : {frames} · {(isOwnStation ? "position inconnue (Paramètres → Station)" : "position du relais inconnue")}";
         return $"Couverture 24 h : {frames} · moy. {Km(avg)} · max {Km(max)} ({s.FarthestStation})";
     }
+
+    private static string UnknownPosition(bool isOwnStation) =>
+        isOwnStation ? "Position inconnue (Paramètres → Station)" : "Position du relais inconnue";
 
     // InvariantGlobalization is on: French decimal comma by hand, as for the Best DX status.
     private static string Km(double km) =>

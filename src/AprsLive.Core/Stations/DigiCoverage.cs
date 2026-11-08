@@ -11,10 +11,11 @@ namespace AprsLive.Core.Stations;
 /// sliding 24 h window. A frame counts for a watched station when it is the
 /// first entry of the frame's path and the frame has been repeated: that
 /// station heard the sender direct, so the distance from it to the sender is
-/// one coverage sample. Only position reports count, since they carry the
-/// sender's own position (an object's position is not where its sender is).
-/// The copies of one transmission (heard on both TNCs, then the APRS-IS
-/// echo) count once.
+/// one coverage sample. Our own station (<see cref="OwnStation"/>) counts
+/// what our TNCs hear direct: radio frames with no hop repeated. Only
+/// position reports count, since they carry the sender's own position (an
+/// object's position is not where its sender is). The copies of one
+/// transmission (heard on both TNCs, then the APRS-IS echo) count once.
 /// </summary>
 public sealed class DigiCoverage
 {
@@ -36,6 +37,20 @@ public sealed class DigiCoverage
 
     public bool IsWatched(string callsign) => _logs.ContainsKey(callsign);
 
+    /// <summary>Our own station, also watched: it gets what our TNCs hear direct.</summary>
+    public string? OwnStation { get; private set; }
+
+    /// <summary>
+    /// Sets our own station and starts recording for it. The previous one is
+    /// left watched: the caller unwatches it if it isn't followed as a digi.
+    /// </summary>
+    public void SetOwnStation(string? callsign)
+    {
+        OwnStation = string.IsNullOrWhiteSpace(callsign) ? null : callsign;
+        if (OwnStation is not null)
+            Watch(OwnStation);
+    }
+
     /// <summary>Starts recording for this station. Returns false if it already was.</summary>
     public bool Watch(string callsign) => _logs.TryAdd(callsign, new CoverageLog { Callsign = callsign });
 
@@ -46,7 +61,8 @@ public sealed class DigiCoverage
     /// Looks at one received packet. Returns true when it added a sample for a
     /// watched station.
     /// </summary>
-    public bool Record(AprsPacket packet)
+    /// <param name="origin">Only a radio frame can have been heard direct by our own station.</param>
+    public bool Record(AprsPacket packet, PacketOrigin origin)
     {
         bool ownPosition = packet.Kind == AprsPacketKind.Position && packet.HasPosition;
 
@@ -58,19 +74,30 @@ public sealed class DigiCoverage
             relayLog.Longitude = packet.Longitude;
         }
 
-        if (FirstRepeater(packet.Frame) is not { } relay)
-            return false;
-        if (_relaysSeen.TryAdd(relay, packet.ReceivedAt))
-            RelaysSeenChanged?.Invoke();
-        else if (packet.ReceivedAt > _relaysSeen[relay])
-            _relaysSeen[relay] = packet.ReceivedAt;
+        bool added = false;
+        if (FirstRepeater(packet.Frame) is { } relay)
+        {
+            if (_relaysSeen.TryAdd(relay, packet.ReceivedAt))
+                RelaysSeenChanged?.Invoke();
+            else if (packet.ReceivedAt > _relaysSeen[relay])
+                _relaysSeen[relay] = packet.ReceivedAt;
+            added = ownPosition && AddSample(relay, packet);
+        }
+        // Heard by our TNCs with no digi in between: our own station heard the sender direct.
+        if (OwnStation is { } own && origin == PacketOrigin.Rf && !packet.Frame.Path.Any(h => h.HasBeenRepeated))
+            added |= ownPosition && AddSample(own, packet);
+        return added;
+    }
 
-        if (!ownPosition || !_logs.TryGetValue(relay, out var log))
+    // One sample for this watched station, unless it is a copy of one already counted.
+    private bool AddSample(string heardBy, AprsPacket packet)
+    {
+        if (!_logs.TryGetValue(heardBy, out var log))
             return false;
         double lat = packet.Latitude!.Value, lon = packet.Longitude!.Value;
         if (lat == 0 && lon == 0)
             return false;   // "no fix" placeholder sent by some trackers
-        if (string.Equals(packet.Source, relay, StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(packet.Source, heardBy, StringComparison.OrdinalIgnoreCase))
             return false;
 
         // Mic-E carries part of the position in the destination: both make up the payload.

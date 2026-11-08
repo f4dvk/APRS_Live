@@ -106,6 +106,7 @@ public partial class MainViewModel : ViewModelBase
         Messages = new MessagesViewModel(_settings, LinkA, LinkB, AprsIs, _messageCenter);
         Objects = new ObjectsViewModel(_settings, LinkA, LinkB, _stationRegistry);
         Coverage = new CoverageViewModel(_settings, _stationRegistry);
+        Station.Saved += Coverage.OnStationSettingsSaved;
         MapController.ZoomLevelChanged += z => Dispatcher.UIThread.Post(() => ZoomLevel = z);
 
         _stationRegistry.StationUpdated += _ => MapController.UpdateHeardStations(_stationRegistry.Stations);
@@ -270,7 +271,7 @@ public partial class MainViewModel : ViewModelBase
 
         var packet = AprsParser.Parse(frame);
         _stationRegistry.Apply(packet, origin, channel);
-        Coverage.Record(packet);
+        Coverage.Record(packet, origin);
         _messageCenter.ApplyIncoming(packet, _settings.Station.Callsign);
     }
 

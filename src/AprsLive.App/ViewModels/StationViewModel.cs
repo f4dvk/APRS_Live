@@ -174,6 +174,9 @@ public partial class StationViewModel : ViewModelBase
 
     partial void OnSelectedStatusModeChanged(StatusMode value) => OnPropertyChanged(nameof(IsStatusFreeText));
 
+    /// <summary>Raised once the station settings (callsign, position...) have been saved.</summary>
+    public event Action? Saved;
+
     [RelayCommand]
     private void Save()
     {
@@ -216,6 +219,7 @@ public partial class StationViewModel : ViewModelBase
         RestartBeaconTimer();
         UpdateBestDxDisplay();
         StatusMessage = "Enregistré.";
+        Saved?.Invoke();
     }
 
     /// <summary>Called when the user right-clicks the map and chooses "Positionner ma station ici" — applies immediately.</summary>
@@ -229,6 +233,7 @@ public partial class StationViewModel : ViewModelBase
         _settings.Save();
         UpdateBestDxDisplay();
         StatusMessage = "Position mise à jour depuis la carte.";
+        Saved?.Invoke();
     }
 
     [RelayCommand]

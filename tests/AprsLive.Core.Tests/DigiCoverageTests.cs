@@ -13,11 +13,14 @@ public class DigiCoverageTests
 
     public DigiCoverageTests() => _coverage.Watch("F1ZXX-3");
 
-    private bool Hear(string source, string info, DateTimeOffset at, params string[] path)
+    private bool Hear(string source, string info, DateTimeOffset at, params string[] path) =>
+        _coverage.Record(Packet(source, info, at, path), PacketOrigin.Rf);
+
+    private static AprsPacket Packet(string source, string info, DateTimeOffset at, params string[] path)
     {
         var bytes = Ax25Builder.BuildUi(source, "APRS", path, info);
         Assert.True(Ax25Frame.TryParse(bytes, out var f));
-        return _coverage.Record(AprsParser.Parse(f!, at));
+        return AprsParser.Parse(f!, at);
     }
 
     private static double Km(double lat, double lon) => GeoMath.DistanceM(Digi.Lat, Digi.Lon, lat, lon) / 1000.0;
@@ -149,13 +152,46 @@ public class DigiCoverageTests
     {
         var coverage = new DigiCoverage();
         coverage.Watch("F1ZXX-3");
-        var bytes = Ax25Builder.BuildUi("F4AAA-9", "APRS", ["F1ZXX-3*", "WIDE2-1"], "!4900.00N/00300.00E>a");
-        Assert.True(Ax25Frame.TryParse(bytes, out var f));
-        coverage.Record(AprsParser.Parse(f!, T0));
+        coverage.Record(Packet("F4AAA-9", "!4900.00N/00300.00E>a", T0, "F1ZXX-3*", "WIDE2-1"), PacketOrigin.Rf);
 
         var only = Assert.Single(coverage.HeardDirect("F1ZXX-3", null, T0));
         Assert.Null(only.DistanceKm);
         Assert.Equal(T0, only.LastAt);
+    }
+
+    [Fact]
+    public void Our_own_station_counts_what_our_tncs_hear_direct()
+    {
+        var coverage = new DigiCoverage();
+        coverage.SetOwnStation("F4DVK-10");
+        const string beacon = "!4900.00N/00300.00E>a";
+
+        Assert.True(coverage.Record(Packet("F4AAA-9", beacon, T0, "WIDE1-1", "WIDE2-1"), PacketOrigin.Rf));
+        // the same transmission on the other TNC counts once
+        Assert.False(coverage.Record(Packet("F4AAA-9", beacon, T0.AddSeconds(1), "WIDE1-1", "WIDE2-1"), PacketOrigin.Rf));
+        // through a digi: not heard direct
+        Assert.False(coverage.Record(Packet("F4BBB", "!4930.00N/00400.00E-b", T0.AddMinutes(1), "F1ZXX-3*", "WIDE2-1"), PacketOrigin.Rf));
+        // APRS-IS, even with nothing repeated in the path: not heard by our TNCs
+        Assert.False(coverage.Record(Packet("F4CCC", "!4940.00N/00340.00E-c", T0.AddMinutes(2), "WIDE2-1", "qAR", "F4IGT"), PacketOrigin.Internet));
+        // our own beacon heard back
+        Assert.False(coverage.Record(Packet("F4DVK-10", "!4930.00N/00330.00E-d", T0.AddMinutes(3), "WIDE2-1"), PacketOrigin.Rf));
+
+        var s = coverage.Summarize("F4DVK-10", Digi, T0.AddMinutes(5))!;
+        Assert.Equal(1, s.Frames);
+        Assert.Equal(Km(49, 3), s.MaxKm!.Value, 6);
+        Assert.Equal("F4AAA-9", Assert.Single(coverage.HeardDirect("F4DVK-10", Digi, T0.AddMinutes(5))).Station);
+    }
+
+    [Fact]
+    public void Our_digi_repeat_echoed_by_aprs_is_is_the_same_transmission()
+    {
+        var coverage = new DigiCoverage();
+        coverage.SetOwnStation("F4DVK-10");
+        const string beacon = "!4900.00N/00300.00E>a";
+
+        Assert.True(coverage.Record(Packet("F4AAA-9", beacon, T0, "WIDE1-1", "WIDE2-1"), PacketOrigin.Rf));
+        Assert.False(coverage.Record(Packet("F4AAA-9", beacon, T0.AddSeconds(4), "F4DVK-10*", "WIDE2-1", "qAR", "F4IGT"), PacketOrigin.Internet));
+        Assert.Equal(1, coverage.Summarize("F4DVK-10", Digi, T0.AddMinutes(1))!.Frames);
     }
 
     [Fact]
