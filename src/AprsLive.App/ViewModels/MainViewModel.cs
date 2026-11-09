@@ -271,7 +271,7 @@ public partial class MainViewModel : ViewModelBase
             origin = PacketOrigin.Internet;   // APRS-IS traffic bridged onto a KISS port
 
         string route = origin == PacketOrigin.Internet ? "Internet"
-            : frame.Path.Any(a => a.HasBeenRepeated) ? "via digi" : "direct";
+            : frame.HasBeenDigipeated ? "via digi" : "direct";
         string port = channel is 1 or 2 ? $"TNC{channel} · " : "";
         LastHeardDisplay = $"{DateTime.Now:HH:mm:ss} · {port}{route}";
         // One line: control characters (a trailing CR...) shown as dots.

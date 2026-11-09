@@ -312,6 +312,70 @@ public class DigiCoverageTests
     }
 
     [Fact]
+    public void A_digi_beaconing_through_its_own_digipeater_is_heard_direct()
+    {
+        var coverage = new DigiCoverage(Digis);   // without the links between digis
+        coverage.SetOwnStation("F4DVK-10");
+        coverage.Watch("F5ZBC-3");
+        const string beacon = "!4900.00N/00300.00E#";
+
+        Assert.Equal(new string[0], DigiCoverage.RelayChain(Packet("F1CNH-3", beacon, T0, "F1CNH-3*", "WIDE2-1").Frame));
+        // our TNCs heard F1CNH-3 itself: a position heard direct, not a link between digis
+        Assert.True(coverage.Record(Packet("F1CNH-3", beacon, T0, "F1CNH-3*", "WIDE2-1"), PacketOrigin.Rf));
+        var heard = Assert.Single(coverage.HeardDirect("F4DVK-10", Digi, T0.AddMinutes(1)));
+        Assert.Equal("F1CNH-3", heard.Station);
+        Assert.False(heard.LastRelayed);
+
+        // repeated by F5ZBC-3: it heard F1CNH-3 send its own position
+        Assert.True(coverage.Record(Packet("F1CNH-3", beacon, T0.AddMinutes(10), "F1CNH-3*", "WIDE1*", "F5ZBC-3*"), PacketOrigin.Rf));
+        heard = Assert.Single(coverage.HeardDirect("F5ZBC-3", Digi, T0.AddMinutes(11)));
+        Assert.Equal("F1CNH-3", heard.Station);
+        Assert.False(heard.LastRelayed);
+    }
+
+    [Fact]
+    public void The_digi_mark_is_for_the_last_frame_heard()
+    {
+        var coverage = LinksCoverage();
+        coverage.SetOwnStation("F4DVK-10");
+        // F1CNH-3 relays F4AAA-9, then sends its own beacon, heard direct
+        coverage.Record(Packet("F4AAA-9", ">a", T0, "F1CNH-3*", "WIDE2-1"), PacketOrigin.Rf);
+        Assert.True(Assert.Single(coverage.HeardDirect("F4DVK-10", Digi, T0.AddMinutes(1))).LastRelayed);
+
+        coverage.Record(Packet("F1CNH-3", "!4900.00N/00300.00E#", T0.AddMinutes(2), "WIDE2-1"), PacketOrigin.Rf);
+        var heard = Assert.Single(coverage.HeardDirect("F4DVK-10", Digi, T0.AddMinutes(3)));
+        Assert.False(heard.LastRelayed);
+        Assert.Equal(2, heard.Frames);
+        Assert.StartsWith("F1CNH-3>APRS,WIDE2-1:", heard.LastFrame);
+    }
+
+    [Fact]
+    public void Digi_marks_only_a_digi_heard_relaying_and_is_worked_out_again_on_each_frame()
+    {
+        var coverage = LinksCoverage("F1CNH-3", "F8KCS-2");
+        (double, double) cnh = (49.0, 3.0);
+        const string zbcBeacon = "!4930.00N/00330.00E#";
+
+        // F5ZBC-3>APRS,F1CNH-3,F8KCS-2,WIDE2*: F1CNH-3 heard F5ZBC-3 send its
+        // own position, F8KCS-2 heard F1CNH-3 relaying it
+        coverage.Record(Packet("F5ZBC-3", zbcBeacon, T0, "F1CNH-3", "F8KCS-2", "WIDE2*"), PacketOrigin.Rf);
+        var byCnh = Assert.Single(coverage.HeardDirect("F1CNH-3", cnh, T0.AddMinutes(1)));
+        Assert.Equal("F5ZBC-3", byCnh.Station);
+        Assert.False(byCnh.LastRelayed);
+        var byKcs = Assert.Single(coverage.HeardDirect("F8KCS-2", Digi, T0.AddMinutes(1)));
+        Assert.Equal("F1CNH-3", byKcs.Station);
+        Assert.True(byKcs.LastRelayed);
+
+        // then F1CNH-3 hears F5ZBC-3 relaying someone else: digi, for this frame
+        coverage.Record(Packet("F4AAA-9", ">a", T0.AddMinutes(5), "F5ZBC-3*", "F1CNH-3*", "WIDE2*"), PacketOrigin.Rf);
+        Assert.True(Assert.Single(coverage.HeardDirect("F1CNH-3", cnh, T0.AddMinutes(6))).LastRelayed);
+
+        // and F5ZBC-3's own beacon again: no longer digi
+        coverage.Record(Packet("F5ZBC-3", zbcBeacon, T0.AddMinutes(10), "F1CNH-3*", "WIDE2-1"), PacketOrigin.Rf);
+        Assert.False(Assert.Single(coverage.HeardDirect("F1CNH-3", cnh, T0.AddMinutes(11))).LastRelayed);
+    }
+
+    [Fact]
     public void A_digi_hears_the_digi_before_it_in_the_path()
     {
         var coverage = LinksCoverage("F5ZBC-3");
@@ -325,7 +389,7 @@ public class DigiCoverageTests
         Assert.Equal("F1CNH-3", s.FarthestStation);
         Assert.Equal(Km(49, 3), s.MaxKm!.Value, 6);
         var heard = Assert.Single(coverage.HeardDirect("F5ZBC-3", Digi, T0.AddMinutes(1)));
-        Assert.True(heard.HeardRelaying);
+        Assert.True(heard.LastRelayed);
     }
 
     [Fact]

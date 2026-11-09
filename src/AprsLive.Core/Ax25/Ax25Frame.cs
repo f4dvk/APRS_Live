@@ -31,6 +31,31 @@ public sealed class Ax25Frame
         a.Callsign.Equals("TCPXX", StringComparison.OrdinalIgnoreCase) ||
         (a.Callsign.Length == 3 && a.Callsign.StartsWith("qA", StringComparison.OrdinalIgnoreCase)));
 
+    /// <summary>
+    /// Path entries the sender itself wrote in, at the head of the path: a
+    /// digi beaconing through its own digipeater sends
+    /// <c>F1CNH-3&gt;APRS,F1CNH-3*,WIDE2-1</c> (with <c>F1CNH-3*,WIDE1*</c>, the
+    /// alias it used up too). Nobody else has repeated those hops.
+    /// </summary>
+    public int SenderHops
+    {
+        get
+        {
+            if (Path.Count == 0
+                || Path[0].Ssid != Source.Ssid
+                || !string.Equals(Path[0].Callsign, Source.Callsign, StringComparison.OrdinalIgnoreCase))
+                return 0;
+            // A used alias right after it: used up with it (WIDE2 with no SSID left, on APRS-IS no star).
+            return Path.Count > 1 && Path[1] is { IsGenericAlias: true } next && (next.HasBeenRepeated || next.Ssid == 0) ? 2 : 1;
+        }
+    }
+
+    /// <summary>
+    /// Repeated by a digipeater: a hop marked repeated, other than the
+    /// sender's own (<see cref="SenderHops"/>). Otherwise heard direct.
+    /// </summary>
+    public bool HasBeenDigipeated => Path.Skip(SenderHops).Any(a => a.HasBeenRepeated);
+
     /// <summary>TNC2 monitor form: <c>SRC&gt;DST,PATH:info</c>.</summary>
     public string ToTnc2()
     {

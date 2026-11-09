@@ -103,7 +103,7 @@ public sealed partial class CoverageRowViewModel : ViewModelBase
                 LastHeard(d.LastAt),
                 d.DistanceKm is { } km ? Km(km) : "—",
                 d.Frames.ToString(CultureInfo.InvariantCulture),
-                d.HeardRelaying,
+                d.LastRelayed,
                 d.LastFrame is { } frame ? Printable(frame) : null,
                 d.LastFrameAt is { } at ? $"Dernière trame reçue — {LastHeard(at)}" : null))
             .ToList();
@@ -146,9 +146,9 @@ public sealed partial class CoverageRowViewModel : ViewModelBase
 }
 
 /// <summary>One line of the stations heard direct by a watched station.</summary>
-/// <param name="IsDigi">Heard as a digi relaying someone else's frame (links between digis).</param>
+/// <param name="LastRelayed">Its last frame heard was someone else's, that it was relaying (link between digis).</param>
 /// <param name="Frame">The last frame heard from it, raw (TNC2 text), shown on hover; <c>null</c> if not kept.</param>
-public sealed record DirectStationItem(string Callsign, string LastText, string DistanceText, string FramesText, bool IsDigi,
+public sealed record DirectStationItem(string Callsign, string LastText, string DistanceText, string FramesText, bool LastRelayed,
     string? Frame, string? FrameHeader)
 {
     public bool HasFrame => Frame is not null;

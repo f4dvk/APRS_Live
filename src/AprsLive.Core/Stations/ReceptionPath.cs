@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using AprsLive.Core.Ax25;
 
 namespace AprsLive.Core.Stations;
@@ -68,10 +67,7 @@ public static partial class ReceptionPath
     internal static bool IsQConstruct(Ax25Address hop) =>
         hop.Callsign.Length == 3 && hop.Callsign.StartsWith("qA", StringComparison.OrdinalIgnoreCase);
 
-    internal static bool IsUsedAlias(Ax25Address hop) => GenericAlias().IsMatch(hop.Callsign);
-
-    [GeneratedRegex("^(WIDE|TRACE)[1-7]?$|^(RELAY|GATE|ECHO)$", RegexOptions.IgnoreCase)]
-    private static partial Regex GenericAlias();
+    internal static bool IsUsedAlias(Ax25Address hop) => hop.IsGenericAlias;
 
     private static (double Lat, double Lon)? Position(HeardStation? s) =>
         s is { Latitude: { } lat, Longitude: { } lon } ? (lat, lon) : null;

@@ -59,7 +59,7 @@
                             <TextBlock Grid.Column="2" Text="Distance" FontSize="11" Opacity="0.7"
                                        ToolTip.Tip="Jusqu'à la dernière position reçue de la station" />
                             <TextBlock Grid.Column="3" Text="Trames" FontSize="11" Opacity="0.7"
-                                       ToolTip.Tip="Trames de position reçues en direct de cette station" />
+                                       ToolTip.Tip="Trames reçues en direct de cette station : ses positions et, avec les liaisons entre digis, les trames qu'elle relayait" />
                         </Grid>
                         <ItemsControl ItemsSource="{Binding HeardStations}">
                             <ItemsControl.ItemTemplate>
@@ -76,9 +76,9 @@
                                         </ToolTip.Tip>
                                         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
                                             <TextBlock Text="{Binding Callsign}" FontWeight="SemiBold" />
-                                            <Border IsVisible="{Binding IsDigi}" BorderBrush="Gray" BorderThickness="1"
+                                            <Border IsVisible="{Binding LastRelayed}" BorderBrush="Gray" BorderThickness="1"
                                                     CornerRadius="3" Padding="4,0" VerticalAlignment="Center"
-                                                    ToolTip.Tip="Entendu en relayant la trame d'une autre station (liaison entre digis)">
+                                                    ToolTip.Tip="Dernière trame reçue en direct de ce digi : celle d'une autre station, qu'il relayait (liaison entre digis). Sans ce repère, c'était sa propre trame.">
                                                 <TextBlock Text="digi" FontSize="10" Opacity="0.8" />
                                             </Border>
                                         </StackPanel>

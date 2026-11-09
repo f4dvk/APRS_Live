@@ -202,7 +202,7 @@ public sealed class StationRegistry
     {
         PacketOrigin.Internet => StationRoute.Internet,
         PacketOrigin.Local => StationRoute.Local,
-        _ => frame.Path.Any(a => a.HasBeenRepeated) ? StationRoute.Digipeater : StationRoute.Direct,
+        _ => frame.HasBeenDigipeated ? StationRoute.Digipeater : StationRoute.Direct,
     };
 
     private static string Describe(StationRoute route, IReadOnlyList<Ax25Address> path)

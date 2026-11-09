@@ -191,7 +191,9 @@ public sealed class DigiCoverage
     /// after a callsign was used up by that digi (<c>F1CNH-3*,WIDE1*</c>: one
     /// hop); one with no callsign in front, or <c>TCPIP*</c>, was repeated by a
     /// station we can't name, given as <c>null</c>: who heard whom is unknown
-    /// on either side of it.
+    /// on either side of it. The sender's own call at the head of the path
+    /// (<c>F1CNH-3&gt;APRS,F1CNH-3*,WIDE2-1</c>, a digi beaconing through its
+    /// own digipeater) is not a relay: it sent the frame so.
     /// </summary>
     public static IReadOnlyList<string?> RelayChain(Ax25Frame frame)
     {
@@ -202,8 +204,9 @@ public sealed class DigiCoverage
                 last = i;
 
         var chain = new List<string?>();
-        bool afterCallsign = false;
-        for (int i = 0; i <= last; i++)
+        int start = frame.SenderHops;
+        bool afterCallsign = start == 1;   // an alias right after the sender's call is its own
+        for (int i = start; i <= last; i++)
         {
             var hop = path[i];
             if (ReceptionPath.IsUsedAlias(hop))
@@ -294,7 +297,7 @@ public sealed class DigiCoverage
                     : null;
                 // Samples saved before the frame was kept have none.
                 var withFrame = g.Where(s => s.Frame is not null).MaxBy(s => s.At);
-                return new DirectStation(last.Station, g.Count(), last.At, km, g.Any(s => s.IsRelay),
+                return new DirectStation(last.Station, g.Count(), last.At, km, last.IsRelay,
                     withFrame?.Frame, withFrame?.At);
             })
             .OrderByDescending(d => d.LastAt)
@@ -383,9 +386,12 @@ public sealed record CoverageSummary(
 /// <summary>A station heard direct by a watched station, over the last 24 h.</summary>
 /// <param name="Frames">Frames heard direct from it (position reports, or frames it relayed for a digi).</param>
 /// <param name="DistanceKm">From the watched station to its last position; <c>null</c> while the relay position is unknown.</param>
-/// <param name="HeardRelaying">Heard as a digi relaying someone else's frame at least once.</param>
+/// <param name="LastRelayed">
+/// Its last frame heard was someone else's, that it was relaying (link
+/// between digis), not its own.
+/// </param>
 /// <param name="LastFrame">The last frame heard from it, as received (TNC2 text), and when.</param>
-public sealed record DirectStation(string Station, int Frames, DateTimeOffset LastAt, double? DistanceKm, bool HeardRelaying = false,
+public sealed record DirectStation(string Station, int Frames, DateTimeOffset LastAt, double? DistanceKm, bool LastRelayed = false,
     string? LastFrame = null, DateTimeOffset? LastFrameAt = null);
 
 /// <summary>Keeps the coverage samples of the watched stations across restarts in <c>coverage.json</c>, next to <c>settings.json</c>.</summary>

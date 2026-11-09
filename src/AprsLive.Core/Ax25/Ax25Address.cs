@@ -1,9 +1,10 @@
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 namespace AprsLive.Core.Ax25;
 
 /// <summary>A callsign-SSID pair from an AX.25 address field (7 bytes).</summary>
-public readonly record struct Ax25Address(string Callsign, int Ssid, bool HasBeenRepeated)
+public readonly partial record struct Ax25Address(string Callsign, int Ssid, bool HasBeenRepeated)
 {
     /// <summary>Base callsign only, e.g. <c>F4DVK</c> from <c>F4DVK-14</c>.</summary>
     [JsonIgnore]
@@ -13,6 +14,16 @@ public readonly record struct Ax25Address(string Callsign, int Ssid, bool HasBee
 
     /// <summary>With a trailing <c>*</c> when the "has-been-repeated" (H) bit is set.</summary>
     public string ToStringWithFlag() => HasBeenRepeated ? ToString() + "*" : ToString();
+
+    /// <summary>
+    /// A generic digipeating alias (<c>WIDE2-1</c>, <c>WIDE1*</c>, <c>TRACE</c>,
+    /// <c>RELAY</c>...) rather than a station: once used, it doesn't say who used it.
+    /// </summary>
+    [JsonIgnore]
+    public bool IsGenericAlias => GenericAlias().IsMatch(Callsign);
+
+    [GeneratedRegex("^(WIDE|TRACE)[1-7]?$|^(RELAY|GATE|ECHO)$", RegexOptions.IgnoreCase)]
+    private static partial Regex GenericAlias();
 
     /// <summary>
     /// Decode one 7-byte address field. Each of the first six bytes is an ASCII

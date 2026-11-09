@@ -82,6 +82,17 @@ public class StationRegistryTests
     }
 
     [Fact]
+    public void A_digi_beaconing_through_its_own_digipeater_is_heard_direct()
+    {
+        var registry = new StationRegistry();
+        registry.Apply(ParsePosition("F1CNH-3", "!4903.50N/00230.00E#Digi", new[] { "F1CNH-3*", "WIDE2-1" }));
+
+        var station = registry.Stations.Single();
+        Assert.True(station.HeardDirect);
+        Assert.Equal(StationRoute.Direct, station.LastRoute);
+    }
+
+    [Fact]
     public void FindBestDx_picks_the_farthest_direct_station_ignoring_relayed_ones()
     {
         var registry = new StationRegistry();

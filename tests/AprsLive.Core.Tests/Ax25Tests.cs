@@ -20,6 +20,27 @@ public class Ax25Tests
         Assert.Equal(expected, frame!.HasInternetPath);
     }
 
+    [Theory]
+    [InlineData(false, 0, "WIDE1-1", "WIDE2-1")]
+    [InlineData(true, 0, "F1CNH-3*", "WIDE2-1")]
+    // its own call first: a digi beaconing through its own digipeater, heard direct
+    [InlineData(false, 1, "F5ZBC-3*", "WIDE2-1")]
+    [InlineData(false, 2, "F5ZBC-3*", "WIDE1*", "WIDE2-1")]
+    [InlineData(false, 2, "F5ZBC-3", "WIDE2*", "qAR", "F4IGT")]
+    // then repeated by another digi
+    [InlineData(true, 1, "F5ZBC-3*", "F1CNH-3*", "WIDE2*")]
+    [InlineData(true, 2, "F5ZBC-3*", "WIDE1*", "F1CNH-3*")]
+    // same call, other SSID: another station
+    [InlineData(true, 0, "F5ZBC-2*", "WIDE2-1")]
+    public void Only_a_hop_repeated_by_someone_else_than_the_sender_means_via_digi(bool expected, int senderHops, params string[] path)
+    {
+        var bytes = Ax25Builder.BuildUi("F5ZBC-3", "APRS", path, ">st");
+        Assert.True(Ax25Frame.TryParse(bytes, out var frame));
+
+        Assert.Equal(senderHops, frame!.SenderHops);
+        Assert.Equal(expected, frame.HasBeenDigipeated);
+    }
+
     [Fact]
     public void BuildAck_is_a_valid_APRS_message_ack()
     {
