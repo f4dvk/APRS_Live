@@ -19,6 +19,16 @@ public partial class MessagesViewModel : ViewModelBase
     private const int MaxRetries = 3;
     private static readonly TimeSpan RetryInterval = TimeSpan.FromSeconds(30);
 
+    /// <summary>
+    /// Wait before transmitting an ack: the digipeater repeats the very
+    /// message being acked right after we hear it, on the same frequency —
+    /// an ack keyed immediately collides with that repeat at the sender,
+    /// deterministically, on every retry. (Same cure as the RD-55 firmware,
+    /// which holds its own acks 1 s; here a little longer since we cannot
+    /// listen to the channel before keying.)
+    /// </summary>
+    private static readonly TimeSpan AckTxDelay = TimeSpan.FromSeconds(2.5);
+
     private readonly AppSettings _settings;
     private readonly LinkViewModel _linkA;
     private readonly LinkViewModel _linkB;
@@ -27,6 +37,7 @@ public partial class MessagesViewModel : ViewModelBase
     private readonly Dictionary<string, ConversationViewModel> _byPeer = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, System.Timers.Timer> _retryTimers = new();
     private readonly Dictionary<string, int> _retryAttempts = new();
+    private readonly HashSet<string> _pendingAcks = new(StringComparer.OrdinalIgnoreCase);
     private int _messageCounter;
 
     public ObservableCollection<ConversationViewModel> Conversations { get; } = new();
@@ -212,8 +223,21 @@ public partial class MessagesViewModel : ViewModelBase
         if (string.IsNullOrWhiteSpace(s.Callsign))
             return;
 
-        var frame = Ax25Builder.BuildAck(s.Callsign, peer, number, s.Destination, s.Path);
-        await SendFrameViaBestLinkAsync(frame);
+        // One ack per (peer, number) at a time: the direct and digipeated
+        // copies that arrive during the hold-off fold into a single ack.
+        string key = $"{peer}|{number}";
+        if (!_pendingAcks.Add(key))
+            return;
+        try
+        {
+            await Task.Delay(AckTxDelay);
+            var frame = Ax25Builder.BuildAck(s.Callsign, peer, number, s.Destination, s.Path);
+            await SendFrameViaBestLinkAsync(frame);
+        }
+        finally
+        {
+            _pendingAcks.Remove(key);
+        }
     }
 
     /// <summary>Sends on every RF channel with "Émission" on (same rule as the beacon); falls back to APRS-IS if none of them actually sent it.</summary>
