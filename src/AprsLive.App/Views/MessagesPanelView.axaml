@@ -19,10 +19,17 @@
                   SelectedItem="{Binding SelectedConversation}" Margin="0,0,0,8">
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="vm:ConversationViewModel">
-                    <StackPanel>
-                        <TextBlock Text="{Binding Peer}" FontWeight="Bold" />
-                        <TextBlock Text="{Binding Preview}" Opacity="0.7" FontSize="11" TextTrimming="CharacterEllipsis" />
-                    </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel>
+                            <TextBlock Text="{Binding Peer}" FontWeight="Bold" />
+                            <TextBlock Text="{Binding Preview}" Opacity="0.7" FontSize="11" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Content="✕" FontSize="10" Padding="4,2" Opacity="0.5"
+                                VerticalAlignment="Center" Background="Transparent"
+                                ToolTip.Tip="Supprimer la conversation"
+                                Command="{Binding $parent[ListBox].((vm:MessagesViewModel)DataContext).DeleteConversationCommand}"
+                                CommandParameter="{Binding}" />
+                    </Grid>
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
@@ -33,18 +40,26 @@
         </Grid>
 
         <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="4">
-            <ScrollViewer>
+            <ScrollViewer Name="ThreadScroll" VerticalScrollBarVisibility="Auto" AllowAutoHide="False"
+                          ScrollChanged="OnThreadScrollChanged">
                 <ItemsControl ItemsSource="{Binding SelectedConversation.Messages}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:MessageRowViewModel">
-                            <StackPanel Margin="6,4" Spacing="1">
-                                <TextBlock Text="{Binding DirectionLabel}" FontSize="10" Opacity="0.6" />
-                                <TextBlock Text="{Binding Text}" TextWrapping="Wrap" />
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <TextBlock Text="{Binding TimeText}" FontSize="10" Opacity="0.5" />
-                                    <TextBlock Text="{Binding StatusText}" FontSize="10" Opacity="0.5" />
+                            <Grid ColumnDefinitions="*,Auto" Margin="6,4">
+                                <StackPanel Spacing="1">
+                                    <TextBlock Text="{Binding DirectionLabel}" FontSize="10" Opacity="0.6" />
+                                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="{Binding TimeText}" FontSize="10" Opacity="0.5" />
+                                        <TextBlock Text="{Binding StatusText}" FontSize="10" Opacity="0.5" />
+                                    </StackPanel>
                                 </StackPanel>
-                            </StackPanel>
+                                <Button Grid.Column="1" Content="✕" FontSize="10" Padding="4,2" Opacity="0.4"
+                                        VerticalAlignment="Top" Background="Transparent"
+                                        ToolTip.Tip="Supprimer le message"
+                                        Command="{Binding $parent[ItemsControl].((vm:MessagesViewModel)DataContext).DeleteMessageCommand}"
+                                        CommandParameter="{Binding}" />
+                            </Grid>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>

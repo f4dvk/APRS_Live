@@ -11,9 +11,22 @@ namespace AprsLive.Core.Messaging;
 /// </summary>
 public sealed class MessageCenter
 {
+    /// <summary>
+    /// How long a repeat of an incoming numbered message (same peer, number and
+    /// text) is treated as the same message: digipeated copies and the sender's
+    /// own retries (the RD-55 resends up to 3 times, 30 s apart, until acked)
+    /// must not pile up as duplicate rows. They are still acked.
+    /// </summary>
+    public static readonly TimeSpan NumberedDuplicateWindow = TimeSpan.FromMinutes(10);
+
+    /// <summary>Same idea for an unnumbered message — only digi copies arrive that close.</summary>
+    public static readonly TimeSpan UnnumberedDuplicateWindow = TimeSpan.FromMinutes(2);
+
     private readonly Dictionary<string, Conversation> _conversations = new(StringComparer.OrdinalIgnoreCase);
 
     public event Action<Conversation>? ConversationUpdated;
+
+    public event Action<Conversation>? ConversationRemoved;
 
     /// <summary>Raised for a genuine incoming message (not an ack/reject).</summary>
     public event Action<Conversation, ConversationMessage>? IncomingMessage;
@@ -49,6 +62,24 @@ public sealed class MessageCenter
         return msg;
     }
 
+    /// <summary>Removes one message from its conversation (any direction).</summary>
+    public void RemoveMessage(string peer, ConversationMessage message)
+    {
+        peer = peer.Trim().ToUpperInvariant();
+        if (!_conversations.TryGetValue(peer, out var conv))
+            return;
+        if (conv.Messages.Remove(message))
+            ConversationUpdated?.Invoke(conv);
+    }
+
+    /// <summary>Removes a whole conversation and its history.</summary>
+    public void RemoveConversation(string peer)
+    {
+        peer = peer.Trim().ToUpperInvariant();
+        if (_conversations.Remove(peer, out var conv))
+            ConversationRemoved?.Invoke(conv);
+    }
+
     public void MarkAcked(string peer, string number) => UpdateOutgoingState(peer, number, MessageAckState.Acked);
 
     public void MarkFailed(string peer, string number) => UpdateOutgoingState(peer, number, MessageAckState.Failed);
@@ -58,6 +89,24 @@ public sealed class MessageCenter
         var conv = GetOrCreate(peer);
         var msg = conv.Messages.LastOrDefault(m => m.Direction == MessageDirection.Outgoing && m.Number == number);
         return msg?.AckState;
+    }
+
+    private static bool IsRecentDuplicate(Conversation conv, string text, string? number)
+    {
+        var window = string.IsNullOrEmpty(number) ? UnnumberedDuplicateWindow : NumberedDuplicateWindow;
+        var cutoff = DateTimeOffset.Now - window;
+
+        for (int i = conv.Messages.Count - 1; i >= 0; i--)
+        {
+            var m = conv.Messages[i];
+            if (m.Timestamp < cutoff)
+                break;
+            if (m.Direction == MessageDirection.Incoming &&
+                m.Text == text &&
+                string.Equals(m.Number ?? "", number ?? "", StringComparison.Ordinal))
+                return true;
+        }
+        return false;
     }
 
     private void UpdateOutgoingState(string peer, string number, MessageAckState state)
@@ -99,10 +148,22 @@ public sealed class MessageCenter
         }
 
         var conv = GetOrCreate(peer);
+        string text = packet.MessageText ?? "";
+
+        // A digipeated copy, or a retry from a sender whose ack got lost, is
+        // the same message: no new row, but the ack is sent again so the
+        // sender's retries stop.
+        if (IsRecentDuplicate(conv, text, packet.MessageNumber))
+        {
+            if (!string.IsNullOrEmpty(packet.MessageNumber))
+                AckRequested?.Invoke(peer, packet.MessageNumber);
+            return;
+        }
+
         var msg = new ConversationMessage
         {
             Direction = MessageDirection.Incoming,
-            Text = packet.MessageText ?? "",
+            Text = text,
             Number = packet.MessageNumber,
         };
         conv.Messages.Add(msg);

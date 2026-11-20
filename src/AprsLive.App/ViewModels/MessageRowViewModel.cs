@@ -7,6 +7,7 @@ public sealed class MessageRowViewModel
 {
     public MessageRowViewModel(ConversationMessage message)
     {
+        Message = message;
         IsOutgoing = message.Direction == MessageDirection.Outgoing;
         Text = message.Text;
         TimeText = message.Timestamp.LocalDateTime.ToString("HH:mm:ss");
@@ -21,6 +22,9 @@ public sealed class MessageRowViewModel
             }
             : "";
     }
+
+    /// <summary>The conversation entry this row displays — the handle for deleting it.</summary>
+    public ConversationMessage Message { get; }
 
     public bool IsOutgoing { get; }
     public string Text { get; }

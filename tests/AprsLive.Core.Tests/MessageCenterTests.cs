@@ -56,6 +56,65 @@ public class MessageCenterTests
     }
 
     [Fact]
+    public void Digipeated_copy_of_an_incoming_message_is_acked_again_but_not_shown_twice()
+    {
+        var center = new MessageCenter();
+        int ackRequests = 0;
+        center.AckRequested += (_, _) => ackRequests++;
+        int incomingEvents = 0;
+        center.IncomingMessage += (_, _) => incomingEvents++;
+
+        var frame = Ax25Builder.BuildMessage("N0CALL-9", "F4DVK-9", "Salut", "APLIVE", new[] { "WIDE1-1" }, "01");
+        center.ApplyIncoming(Parse(frame), ownCallsign: "F4DVK-9");
+        center.ApplyIncoming(Parse(frame), ownCallsign: "F4DVK-9");
+
+        var conv = Assert.Single(center.Conversations);
+        Assert.Single(conv.Messages);
+        Assert.Equal(1, incomingEvents);
+        Assert.Equal(2, ackRequests);
+    }
+
+    [Fact]
+    public void Same_number_with_different_text_is_a_new_message()
+    {
+        var center = new MessageCenter();
+
+        center.ApplyIncoming(Parse(Ax25Builder.BuildMessage("N0CALL-9", "F4DVK-9", "Premier", "APLIVE", Array.Empty<string>(), "01")), "F4DVK-9");
+        center.ApplyIncoming(Parse(Ax25Builder.BuildMessage("N0CALL-9", "F4DVK-9", "Second", "APLIVE", Array.Empty<string>(), "01")), "F4DVK-9");
+
+        var conv = Assert.Single(center.Conversations);
+        Assert.Equal(2, conv.Messages.Count);
+    }
+
+    [Fact]
+    public void RemoveMessage_deletes_only_that_entry()
+    {
+        var center = new MessageCenter();
+        var first = center.RecordOutgoing("N0CALL-9", "Un", "01");
+        center.RecordOutgoing("N0CALL-9", "Deux", "02");
+
+        center.RemoveMessage("N0CALL-9", first);
+
+        var conv = Assert.Single(center.Conversations);
+        var left = Assert.Single(conv.Messages);
+        Assert.Equal("Deux", left.Text);
+    }
+
+    [Fact]
+    public void RemoveConversation_forgets_the_whole_history()
+    {
+        var center = new MessageCenter();
+        center.RecordOutgoing("N0CALL-9", "Un", "01");
+        Conversation? removed = null;
+        center.ConversationRemoved += c => removed = c;
+
+        center.RemoveConversation("n0call-9");
+
+        Assert.Empty(center.Conversations);
+        Assert.Equal("N0CALL-9", removed?.Peer);
+    }
+
+    [Fact]
     public void MarkFailed_does_not_override_an_already_acked_message()
     {
         var center = new MessageCenter();

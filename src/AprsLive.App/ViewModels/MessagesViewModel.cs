@@ -142,6 +142,41 @@ public partial class MessagesViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private void DeleteMessage(MessageRowViewModel? row)
+    {
+        if (row is null || SelectedConversation is null)
+            return;
+
+        string peer = SelectedConversation.Peer;
+        if (row.IsOutgoing && row.Message.Number is { Length: > 0 } number)
+            StopRetryTimer($"{peer}|{number}");
+
+        _center.RemoveMessage(peer, row.Message);
+    }
+
+    [RelayCommand]
+    private void DeleteConversation(ConversationViewModel? row)
+    {
+        if (row is null)
+            return;
+
+        foreach (var key in _retryTimers.Keys.Where(k => k.StartsWith(row.Peer + "|", StringComparison.OrdinalIgnoreCase)).ToList())
+            StopRetryTimer(key);
+
+        _center.RemoveConversation(row.Peer);
+        _byPeer.Remove(row.Peer);
+        Conversations.Remove(row);
+
+        if (SelectedConversation == row)
+            SelectedConversation = null;
+        if (string.Equals(_notificationPeer, row.Peer, StringComparison.OrdinalIgnoreCase))
+        {
+            Notification = null;
+            _notificationPeer = null;
+        }
+    }
+
+    [RelayCommand]
     private async Task Send()
     {
         if (SelectedConversation is null || string.IsNullOrWhiteSpace(DraftText))
