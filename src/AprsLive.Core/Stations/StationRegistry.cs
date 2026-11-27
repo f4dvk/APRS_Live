@@ -121,6 +121,10 @@ public sealed class StationRegistry
         station.CourseDeg = packet.CourseDeg;
         station.SpeedKnots = packet.SpeedKnots;
         station.AltitudeM = packet.AltitudeM;
+        station.MicEStatus = packet.MicEStatus;
+        station.IsEmergency = packet.IsEmergency;
+        if (packet.Device is not null)
+            station.Device = packet.Device;
         station.PathText = FormatPath(packet.Frame);
         station.LastHeard = packet.ReceivedAt;
         station.LastRoute = route;

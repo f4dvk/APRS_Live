@@ -13,6 +13,9 @@ glissantes de votre station, d'après ce que vos TNC reçoivent en direct, et de
 digipeaters choisis ; un clic sur une ligne liste les stations reçues en
 direct, avec l'heure de dernière réception et, au survol, la dernière trame
 brute ; en option, les liaisons entre digis lues dans le chemin des trames),
+décodage Mic-E complet (message Mic-E dont l'urgence, signalée en rouge ;
+altitude ; ambiguïté de position ; précision `!DAO!` ; identification du poste
+ou du tracker émetteur : Kenwood, Yaesu, AnyTone, Byonics, SCS, APRSdroid...),
 thème clair/sombre sélectionnable.
 
 Développé en .NET 8 + [Avalonia](https://avaloniaui.net/) (même socle que le
@@ -71,6 +74,10 @@ single-file) dans `publish/<rid>/`.
 - Icônes de station : planches de symboles APRS
   [hessu/aprs-symbols](https://github.com/hessu/aprs-symbols) (OH7LZB,
   d'après le jeu WA8LMF ; usage libre sur le système APRS).
+- Identification des postes Mic-E : index
+  [aprs-deviceid](https://github.com/aprsorg/aprs-deviceid) (OH7LZB pour
+  aprs.fi, CC BY-SA 2.0) et
+  [mic-e-types.txt](http://www.aprs.org/aprs12/mic-e-types.txt) (WB4APR).
 - Cartographie [Mapsui](https://mapsui.com/) + tuiles
   [OpenStreetMap](https://www.openstreetmap.org/copyright).
 

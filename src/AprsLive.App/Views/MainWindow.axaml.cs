@@ -194,6 +194,23 @@ public partial class MainWindow : Window
             Foreground = Brushes.Black,
         });
 
+        if (station.IsEmergency)
+            _stationPopupContent.Children.Add(new TextBlock
+            {
+                Text = "⚠ URGENCE (Mic-E)",
+                FontWeight = FontWeight.Bold,
+                Foreground = new SolidColorBrush(Color.FromRgb(0xC6, 0x28, 0x28)),
+            });
+        var identity = new[] { station.Device, station.IsEmergency ? null : station.MicEStatus }
+            .Where(part => !string.IsNullOrEmpty(part)).ToList();
+        if (identity.Count > 0)
+            _stationPopupContent.Children.Add(new TextBlock
+            {
+                Text = string.Join(" · ", identity),
+                Foreground = Brushes.Black,
+                TextWrapping = TextWrapping.Wrap,
+            });
+
         if (!string.IsNullOrWhiteSpace(station.Comment))
             _stationPopupContent.Children.Add(new TextBlock
             {

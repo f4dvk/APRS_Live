@@ -20,6 +20,9 @@ public sealed class StationRowViewModel
                 : "";
         Icon = AprsSymbolIcons.CellImage(station.SymbolTable, station.SymbolCode);
         Comment = station.Comment ?? "";
+        Device = station.Device ?? "";
+        MicEStatus = station.MicEStatus ?? "";
+        IsEmergency = station.IsEmergency;
         LastHeardText = station.LastHeard.LocalDateTime.ToString("dd/MM/yyyy HH:mm:ss");
         LastHeard = station.LastHeard;
 
@@ -82,6 +85,15 @@ public sealed class StationRowViewModel
 
     public Avalonia.Media.IImage Icon { get; }
     public string Comment { get; }
+
+    /// <summary>Radio or tracker identified from its Mic-E packets, e.g. "Yaesu FT3D"; empty if unknown.</summary>
+    public string Device { get; }
+
+    /// <summary>Mic-E message of the last position ("En route"...); empty if it was not Mic-E.</summary>
+    public string MicEStatus { get; }
+
+    public bool IsEmergency { get; }
+
     public string LastHeardText { get; }
     public DateTimeOffset LastHeard { get; }
 

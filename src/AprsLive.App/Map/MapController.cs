@@ -94,11 +94,12 @@ public sealed class MapController
                     Image = layer,
                     SymbolScale = 1.0,   // 24 px sheet at native size, as on aprs.fi
                 });
+            // A Mic-E emergency: white on red, so it stands out from the other labels.
             feature.Styles.Add(new LabelStyle
             {
                 Text = s.Callsign,
-                ForeColor = Color.Black,
-                BackColor = new Brush(new Color(255, 255, 255, 205)),
+                ForeColor = s.IsEmergency ? Color.White : Color.Black,
+                BackColor = new Brush(s.IsEmergency ? new Color(198, 40, 40, 230) : new Color(255, 255, 255, 205)),
                 Offset = new Offset(0, 19),
                 Font = new Font { Size = 11 },
             });

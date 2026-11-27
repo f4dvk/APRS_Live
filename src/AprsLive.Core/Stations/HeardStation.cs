@@ -25,6 +25,15 @@ public sealed class HeardStation
 
     public double? AltitudeM { get; set; }
 
+    /// <summary>Mic-E message of the last position packet ("En route"...); <c>null</c> if it was not Mic-E.</summary>
+    public string? MicEStatus { get; set; }
+
+    /// <summary>The last position packet was a Mic-E emergency.</summary>
+    public bool IsEmergency { get; set; }
+
+    /// <summary>Radio or tracker last identified for this station (kept through packets that don't tell).</summary>
+    public string? Device { get; set; }
+
     /// <summary>The path the last packet was received over, e.g. <c>APLIVE via WIDE1-1*,WIDE2-1</c>.</summary>
     public string PathText { get; set; } = "";
 

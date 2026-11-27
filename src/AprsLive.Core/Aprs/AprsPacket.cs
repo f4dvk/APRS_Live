@@ -49,6 +49,16 @@ public sealed class AprsPacket
     // --- status / free text ---
     public string? Comment { get; set; }
 
+    // --- Mic-E ---
+    /// <summary>Mic-E message ("En route", "Urgence", "Perso 2"...); <c>null</c> for other formats.</summary>
+    public string? MicEStatus { get; set; }
+
+    /// <summary>Mic-E emergency (message bits 000).</summary>
+    public bool IsEmergency { get; set; }
+
+    /// <summary>Radio or tracker that sent it, e.g. <c>Yaesu FT3D</c>, when the packet tells (Mic-E).</summary>
+    public string? Device { get; set; }
+
     public bool HasPosition => Latitude is not null && Longitude is not null;
 
     /// <summary>Name to show on the map: object/item name, else source callsign.</summary>

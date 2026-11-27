@@ -20,7 +20,7 @@
         <ListBox ItemsSource="{Binding Stations}">
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="vm:StationRowViewModel">
-                    <Grid ColumnDefinitions="Auto,120,100,90,80,Auto,*" Margin="0,4">
+                    <Grid ColumnDefinitions="Auto,120,100,90,80,Auto,140,Auto,*" Margin="0,4">
                         <Image Source="{Binding Icon}" Width="20" Height="20" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="1" Text="{Binding Callsign}" FontWeight="Bold" Margin="8,0" VerticalAlignment="Center" />
                         <Panel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,0,8,0"
@@ -37,7 +37,18 @@
                                    Margin="0,0,16,0" Background="Transparent"
                                    ToolTip.Tip="Distance depuis votre station (position de Paramètres → Station)" />
                         <TextBlock Grid.Column="5" Text="{Binding LastHeardText}" Opacity="0.7" VerticalAlignment="Center" Margin="0,0,8,0" />
-                        <TextBlock Grid.Column="6" Text="{Binding Comment}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="6" Text="{Binding Device}" TextTrimming="CharacterEllipsis" Opacity="0.8"
+                                   VerticalAlignment="Center" Margin="0,0,8,0" Background="Transparent"
+                                   ToolTip.Tip="Poste ou tracker, d'après ses trames Mic-E" />
+                        <Panel Grid.Column="7" VerticalAlignment="Center" Margin="0,0,8,0" Background="Transparent"
+                               ToolTip.Tip="Message Mic-E de la dernière position">
+                            <!-- Fixed colours on purpose, like the Direct badge. -->
+                            <Border IsVisible="{Binding IsEmergency}" Background="#FFC62828" CornerRadius="3" Padding="6,1">
+                                <TextBlock Text="URGENCE" Foreground="White" FontSize="11" FontWeight="Bold" />
+                            </Border>
+                            <TextBlock IsVisible="{Binding !IsEmergency}" Text="{Binding MicEStatus}" FontSize="11" FontStyle="Italic" Opacity="0.8" />
+                        </Panel>
+                        <TextBlock Grid.Column="8" Text="{Binding Comment}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                     </Grid>
                 </DataTemplate>
             </ListBox.ItemTemplate>
